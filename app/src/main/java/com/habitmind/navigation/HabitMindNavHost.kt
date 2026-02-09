@@ -234,4 +234,95 @@ fun HabitMindNavHost(
             )
         }
         
-        // Floating FAB - positioned above navbar, 
+        // Floating FAB - positioned above navbar, right side
+        if (showFAB) {
+            FloatingGlassFAB(
+                onClick = { activeDialog = ActiveDialog.ADD_SHEET },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 20.dp, bottom = 100.dp)
+                    .navigationBarsPadding()
+            )
+        }
+        
+        // Dialog handling
+        when (activeDialog) {
+            ActiveDialog.ADD_SHEET -> {
+                AddItemSheet(
+                    currentScreen = currentRoute ?: "home",
+                    onDismiss = { activeDialog = ActiveDialog.NONE },
+                    onAddTask = { activeDialog = ActiveDialog.ADD_TASK },
+                    onAddHabit = { activeDialog = ActiveDialog.ADD_HABIT },
+                    onAddJournalEntry = { activeDialog = ActiveDialog.ADD_JOURNAL }
+                )
+            }
+            
+            ActiveDialog.ADD_HABIT -> {
+                AddHabitDialog(
+                    onDismiss = { activeDialog = ActiveDialog.NONE },
+                    onConfirm = { name, color, reminderTime ->
+                        scope.launch {
+                            val habit = Habit(
+                                name = name,
+                                color = color,
+                                reminderTime = reminderTime
+                            )
+                            habitRepository.insertHabit(habit)
+                        }
+                        activeDialog = ActiveDialog.NONE
+                    }
+                )
+            }
+            
+            ActiveDialog.ADD_TASK -> {
+                AddTaskDialog(
+                    onDismiss = { activeDialog = ActiveDialog.NONE },
+                    onConfirm = { title, description, estimatedMinutes, dueDate ->
+                        scope.launch {
+                            val task = Task(
+                                title = title,
+                                description = description ?: "",
+                                date = dueDate,
+                                estimatedMinutes = estimatedMinutes
+                            )
+                            taskRepository.insertTask(task)
+                        }
+                        activeDialog = ActiveDialog.NONE
+                    }
+                )
+            }
+            
+            ActiveDialog.ADD_JOURNAL -> {
+                AddJournalDialog(
+                    onDismiss = { activeDialog = ActiveDialog.NONE },
+                    onConfirm = { content, type, tags, mood ->
+                        scope.launch {
+                            val entry = JournalEntry(
+                                type = type,
+                                content = content,
+                                tags = tags ?: "",
+                                mood = mood?.toIntOrNull()
+                            )
+                            journalRepository.insertEntry(entry)
+                        }
+                        activeDialog = ActiveDialog.NONE
+                    }
+                )
+            }
+            
+            ActiveDialog.QUICK_NOTE -> {
+                QuickNoteDialog(
+                    onDismiss = { activeDialog = ActiveDialog.NONE },
+                    onConfirm = { content ->
+                        scope.launch {
+                            journalRepository.addQuickNote(content)
+                        }
+                        activeDialog = ActiveDialog.NONE
+                    }
+                )
+            }
+            
+            ActiveDialog.NONE -> { /* No dialog shown */ }
+        }
+    }
+}
