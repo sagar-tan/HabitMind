@@ -1,0 +1,735 @@
+
+I am going to do four things clearly:
+
+1. Define global UI rules
+2. Define navigation and app structure
+3. Walk through the **full user journey screen by screen**
+4. Specify **each screen’s components, states, and interactions**
+
+No design guessing. Everything explicit.
+
+---
+
+# UI SPECIFICATION DOCUMENT
+
+Mobile App, Personal Health and Habits Tracker
+Offline, single user, Android first
+
+Target screen size, 360x800 dp baseline
+Dark mode default
+
+---
+
+## 1. Global UI Rules
+
+### Visual Style
+
+* Dark background, near black, not pure black
+* Neutral colors, no aggressive red or green
+* Accent color, one only, used for progress and focus
+* Rounded corners, medium radius
+* Soft shadows, minimal depth
+
+### Typography
+
+* One primary font family
+* Clear hierarchy
+
+  * Title
+  * Section header
+  * Body
+  * Caption
+* Large text, ADHD friendly
+* No dense paragraphs
+
+### Interaction Principles
+
+* One primary action per screen
+* Everything tappable is visually obvious
+* Animations only for
+
+  * Progress
+  * State change
+* No decorative animations
+
+---
+
+## 2. Navigation Structure
+
+### Bottom Navigation Bar
+
+Always visible except full screen inputs.
+
+Tabs
+
+1. Home
+2. Plan
+3. Habits
+4. Journal
+5. Insights
+
+Center floating action button optional for quick add.
+
+---
+
+## 3. User Journey Overview
+
+### First Launch
+
+1. Welcome screen
+2. Local only confirmation
+3. Basic profile setup
+4. App walkthrough
+5. Land on Home
+
+### Daily Use
+
+* Open app
+* See today summary
+* Act on tasks or habits
+* Optional journaling
+* Close app
+
+### Weekly Cycle
+
+* Sunday reminder
+* Weekly review screen
+* Next week planning
+* Goal progress update
+
+---
+
+## 4. Screen by Screen UI Specification
+
+---
+
+## Screen 1: Welcome Screen
+
+### Purpose
+
+Set tone and trust.
+
+### Elements
+
+* App name
+* Short line explaining purpose
+* Button, Start Locally
+
+### Behavior
+
+* No login
+* Proceeds to setup
+
+---
+
+## Screen 2: Local Data Confirmation
+
+### Purpose
+
+Explicit privacy clarity.
+
+### Elements
+
+* Text explaining local only storage
+* Checkbox, I understand
+* Continue button disabled until checked
+
+---
+
+## Screen 3: Basic Profile Setup
+
+### Fields
+
+* Age input
+* Height input
+* Weight input
+
+### Buttons
+
+* Skip
+* Continue
+
+### Notes
+
+No validation heavy logic.
+
+---
+
+## Screen 4: Quick Walkthrough
+
+### Slides
+
+1. Track habits and plans
+2. Weekly reviews
+3. Local analytics
+
+### Controls
+
+* Swipe
+* Skip
+
+---
+
+## Screen 5: Home Dashboard
+
+This is the most important screen.
+
+### Layout
+
+Vertical scroll.
+
+### Sections
+
+#### Header
+
+* Date
+* Day name
+* Small mood indicator optional
+
+#### Today Summary Card
+
+* Habits completed count
+* Tasks progress percentage
+* Schedule adherence
+
+#### Schedule Section
+
+* Current time indicator
+* Upcoming block
+* Missed block marked neutrally
+
+#### Quick Actions
+
+* Add journal
+* Add task
+* Log note
+
+---
+
+## Screen 6: Plan Tab
+
+### Default View
+
+Today’s plan.
+
+### Components
+
+* Task list
+
+  * Checkbox or progress slider
+  * Percentage label
+* Gantt timeline toggle
+
+### Task Card
+
+* Title
+* Time estimate
+* Progress indicator
+
+### Interactions
+
+* Swipe to defer
+* Long press to edit
+* Auto move incomplete to next day at midnight
+
+---
+
+## Screen 7: Gantt Timeline View
+
+### Purpose
+
+Visualize day load.
+
+### Elements
+
+* Horizontal timeline
+* Task blocks sized by estimate
+* Completed portion shaded
+
+### Controls
+
+* Pinch zoom
+* Tap to edit task
+
+---
+
+## Screen 8: Habits Tab
+
+### Layout
+
+Grid or list.
+
+### Habit Card
+
+* Habit name
+* Streak count
+* Completion toggle
+
+### Daily Image Upload
+
+Inside habit detail.
+
+#### Image Slots
+
+* Front
+* Left
+* Right
+* Back
+* Face close
+
+### Behavior
+
+* One upload per day
+* Shows timeline preview
+
+---
+
+## Screen 9: Habit Detail Screen
+
+### Sections
+
+* Habit info
+* Streak visualization
+* Daily completion history
+* Image gallery by date
+
+---
+
+## Screen 10: Journal Tab
+
+### Default View
+
+Timeline feed.
+
+### Entry Types
+
+* Text
+* Voice
+* Image
+
+### Entry Card
+
+* Timestamp
+* Preview
+* Tags
+
+### Floating Button
+
+* New journal entry
+
+---
+
+## Screen 11: Journal Entry Creation
+
+### Input Options
+
+* Text editor
+* Audio record
+* Camera or gallery
+
+### Controls
+
+* Add tags
+* Save
+* Cancel
+
+---
+
+## Screen 12: Daily Log Screen
+
+### Purpose
+
+Quick notes.
+
+### UI
+
+* Minimal text input
+* Auto timestamp
+* Save instantly
+
+---
+
+## Screen 13: Weekly Review Screen
+
+Triggered manually or via notification.
+
+### Sections
+
+* Week summary
+* Planned tasks list
+* Completion status toggles
+* Reflection text area
+
+### Actions
+
+* Carry forward tasks
+* Create next week plan
+
+---
+
+## Screen 14: Goals Screen
+
+### Goal Card
+
+* Title
+* Progress bar
+* Next update date
+
+### Goal Detail
+
+* Weekly progress entries
+* Notes
+* Timeline view
+
+---
+
+## Screen 15: Insights Tab
+
+### Sections
+
+#### Overview
+
+* Consistency score
+* Habit adherence
+* Planning accuracy
+
+#### Charts
+
+* Weekly habit trends
+* Task rollover
+* Time of productivity
+
+### Interaction
+
+* Filter by week or month
+* Tap chart for detail
+
+---
+
+## 16. Settings Screen
+
+### Options
+
+* Notifications
+* Data export
+* Data import
+* Theme
+* Reset app
+
+---
+
+## States and Edge Cases
+
+### Empty States
+
+* Clear guidance
+* One action button
+
+### Error States
+
+* Neutral messaging
+* No blame language
+
+### Offline
+
+* Fully functional always
+
+---
+
+## Figma Deliverables Checklist
+
+Designer should produce:
+
+* Component library
+* All screens listed above
+* Interaction prototypes
+* Dark mode tokens
+* Typography scale
+
+---
+
+## Brutal Reality Check
+
+* This is a **big app**, do not design every pixel first
+* Prioritize Home, Plan, Habits, Weekly Review
+* Insights can start basic
+
+
+---
+
+# PREMIUM UI + MOTION SPEC
+
+Mobile App UI
+
+Goal, calm, expensive, fluid, not flashy.
+
+---
+
+## 1. What “Premium” Actually Means Here
+
+Premium is:
+
+* Predictable motion
+* Soft easing
+* Fewer animations, done better
+* Depth through spacing, not colors
+* Motion that explains state change
+
+Premium is NOT:
+
+* Bouncy transitions
+* Random fades
+* Over animated charts
+* Fancy gradients everywhere
+
+---
+
+## 2. Global Motion Rules
+
+### Motion Timing
+
+* Micro interactions, 120 to 180 ms
+* Screen transitions, 250 to 350 ms
+* Heavy transitions, max 400 ms
+
+Nothing slower. Slowness feels laggy, not premium.
+
+---
+
+### Easing
+
+Use only two easing curves across the app:
+
+* Ease out for entering elements
+* Ease in for exiting elements
+
+Never mix random easings.
+
+---
+
+## 3. Screen Transitions
+
+### Tab Switch
+
+* Content slides horizontally
+* Old screen moves out at 70 percent opacity
+* New screen fades in slightly while sliding
+
+No full fade out. That feels cheap.
+
+---
+
+### Push Navigation
+
+* New screen slides from bottom
+* Background scales down to 96 percent
+* Subtle blur on background
+
+This gives depth without drama.
+
+---
+
+### Modal Sheets
+
+* Bottom sheet with spring free motion
+* Stops cleanly, no bounce
+* Drag to dismiss with resistance
+
+---
+
+## 4. Component Motion
+
+### Buttons
+
+* Scale down to 96 percent on press
+* Color darkens slightly
+* Release snaps back fast
+
+No ripple effects.
+
+---
+
+### Cards
+
+* Elevation increases on tap
+* Shadow softens
+* Content remains still
+
+---
+
+### Toggles and Checkboxes
+
+* Morph animation, not switch
+* State change visible before animation ends
+
+---
+
+## 5. Progress and Feedback
+
+### Habit Completion
+
+* Progress fills smoothly
+* Checkmark draws itself
+* Streak number increments after completion
+
+Order matters here.
+
+---
+
+### Task Percentage Slider
+
+* Thumb follows finger exactly
+* Progress bar trails by 40 ms
+* Percentage text updates live
+
+This feels responsive and expensive.
+
+---
+
+## 6. Lists and Feeds
+
+### Entry Appearance
+
+* New items slide in from bottom
+* Slight opacity fade
+* Old items shift smoothly, no jump
+
+---
+
+### Deleting Items
+
+* Swipe gesture
+* Item shrinks vertically
+* Space collapses smoothly
+
+Never hard remove.
+
+---
+
+## 7. Charts and Analytics Motion
+
+### Initial Load
+
+* Axes fade in first
+* Data lines draw left to right
+* Numbers count up quickly
+
+### Interaction
+
+* Tap highlights data point
+* Tooltip fades and scales in
+
+No bouncing graphs.
+
+---
+
+## 8. Image and Media Transitions
+
+### Habit Photos
+
+* Tap opens full screen
+* Image scales up from thumbnail
+* Background darkens gradually
+
+### Exit
+
+* Image scales back into place
+* Background clears first, image second
+
+This creates continuity.
+
+---
+
+## 9. Typography Motion
+
+* Headers fade in slightly delayed
+* Body text appears instantly
+* Numbers animate, text does not
+
+Animating text looks amateur.
+
+---
+
+## 10. Loading States
+
+### Skeletons
+
+* Soft shimmer
+* Low contrast
+* No movement faster than 1.5 seconds loop
+
+### Spinners
+
+Avoid wherever possible.
+
+---
+
+## 11. Haptics
+
+If supported:
+
+* Light tap on completion
+* Medium tap on weekly review submit
+* No haptics on navigation
+
+Haptics are seasoning, not the dish.
+
+---
+
+## 12. ADHD Friendly Focus Transitions
+
+### Focus Mode
+
+* Background dims
+* Non relevant UI fades
+* Active element slightly enlarges
+
+Example, editing a task.
+
+---
+
+## 13. Color and Depth
+
+* One accent color only
+* Depth via shadows and scale
+* Gradients only in charts
+
+Flat does not mean lifeless.
+
+---
+
+## 14. Figma Specific Instructions
+
+Tell the designer:
+
+* Use Smart Animate only
+* Define motion tokens
+* Reuse transitions everywhere
+* No one off animations
+
+Create:
+
+* Motion component library
+* Transition prototypes for every navigation type
+
+---
+
+## Hard Truth You Need to Hear
+
+If you:
+
+* Add too many animations, it will feel like shit
+* Copy iOS motion blindly on Android, it will feel off
+* Animate everything, user will hate it in a week
+
+Premium apps are **boring on first glance**, addictive in daily use.
+
+---
+
+If you want next, I can:
+
+* Define **exact motion tokens** for Figma
+* Design **one killer Home screen interaction flow**
+* Or help you **cut animations that should NOT exist**
+
+Say which one.

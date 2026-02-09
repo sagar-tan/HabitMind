@@ -1,0 +1,381 @@
+
+I will now **reset the mental model** and tell you **exactly what HabitMind is**, what features it has, and what your **deliverables + testing pipeline** look like in **pure Android terms**.
+
+No web bullshit from here.
+
+---
+
+# HABITMIND
+
+Feature Definition + Deliverables
+Kotlin + Jetpack Compose
+
+---
+
+## 1. What HabitMind IS
+
+HabitMind is a **personal, offline-first self tracking app** that helps ONE user:
+
+* Track habits and daily plans
+* Journal thoughts via text, voice, images
+* Review weeks and goals
+* Analyze personal behavior patterns
+* Stay private, local, and distraction free
+
+It is NOT:
+
+* A cloud app
+* A social app
+* A medical app
+* An AI assistant
+
+---
+
+## 2. Core Feature Set (v1 Locked Scope)
+
+### 2.1 App Foundation
+
+**Features**
+
+* Kotlin + Jetpack Compose UI
+* Material 3 theming
+* Dark mode default
+* No login
+* No cloud sync
+
+**Deliverables**
+
+* Android Studio project builds successfully
+* App launches on emulator + physical phone
+* App icon, splash screen, app name set to HabitMind
+* Theme system defined
+
+---
+
+## 2.2 Navigation
+
+**Features**
+
+* Bottom navigation bar
+* Navigation Compose
+* Stack navigation for details
+* Modal bottom sheets
+
+**Tabs**
+
+* Home
+* Plan
+* Habits
+* Journal
+* Insights
+
+**Deliverables**
+
+* Navigation graph implemented
+* Back button works correctly
+* Smooth Compose transitions
+* No broken routes
+
+---
+
+## 2.3 Home Dashboard
+
+**Features**
+
+* Current date and day
+* Summary cards
+
+  * Habit completion
+  * Task progress
+* Upcoming schedule snapshot
+* Quick action buttons
+
+**Deliverables**
+
+* Scrollable Compose screen
+* Empty states handled
+* Live state updates from local DB
+
+---
+
+## 2.4 Daily Plans and Tasks
+
+**Features**
+
+* Daily task list
+* Each task has completion percentage
+* Auto carry forward incomplete tasks
+* Timeline style day visualization
+
+**Deliverables**
+
+* Create, edit, delete task
+* Progress slider works smoothly
+* Tasks persist after app kill
+* Rollover logic verified
+
+---
+
+## 2.5 Habits Tracker
+
+**Features**
+
+* Habit list
+* Daily completion toggle
+* Streak tracking
+* Habit detail view
+
+**Deliverables**
+
+* Habit CRUD operations
+* Streak logic correct
+* Compose animations on completion
+* Daily reset logic works
+
+---
+
+## 2.6 Habit Photo Logging
+
+**Features**
+
+* Daily photos per habit
+
+  * Front
+  * Left
+  * Right
+  * Back
+  * Face
+* Stored locally with date tags
+
+**Deliverables**
+
+* Camera and gallery integration
+* Runtime permissions handled
+* Photos persist after reboot
+* Gallery view by date
+
+---
+
+## 2.7 Journaling
+
+**Features**
+
+* Text journal entries
+* Voice notes
+* Image entries
+* Timeline feed
+
+**Deliverables**
+
+* Audio recording and playback
+* Image attachment works
+* Entries sorted by timestamp
+* No data loss
+
+---
+
+## 2.8 Daily Log (Quick Notes)
+
+**Features**
+
+* One tap note entry
+* Auto timestamp
+* Minimal UI
+
+**Deliverables**
+
+* Instant save
+* Appears in log list
+* No confirmation dialogs
+
+---
+
+## 2.9 Weekly Planning and Review
+
+**Features**
+
+* Weekly plan creation
+* Weekly review screen
+* Reflection notes
+* Carry forward unfinished items
+
+**Deliverables**
+
+* Week boundaries correct
+* Review screen accessible
+* Data grouped by week
+* No overlap bugs
+
+---
+
+## 2.10 Goals Tracking
+
+**Features**
+
+* Long term goals
+* Weekly progress updates
+* Simple percentage or notes
+
+**Deliverables**
+
+* Goal CRUD
+* Weekly update UI
+* Progress visualization
+* History preserved
+
+---
+
+## 2.11 Insights and Analytics
+
+**Features**
+
+* Habit adherence trends
+* Task rollover frequency
+* Weekly consistency score
+* Simple charts
+
+**Deliverables**
+
+* Compose charts render correctly
+* Data aggregation correct
+* Filter by week or month
+* Smooth chart animations
+
+---
+
+## 2.12 Notifications
+
+**Features**
+
+* Habit reminders
+* Schedule reminders
+* Weekly review reminder
+
+**Deliverables**
+
+* AlarmManager or WorkManager setup
+* Notifications fire reliably
+* User can disable per type
+
+---
+
+## 3. DATA LAYER (CRITICAL)
+
+**Tech**
+
+* Room database
+* DataStore for preferences
+* Local file storage for media
+
+**Deliverables**
+
+* Room schema defined
+* Migrations handled
+* No crashes on schema update
+* Manual export to JSON/CSV
+
+---
+
+## 4. ONLINE DEPENDENCY (MINIMAL, OPTIONAL)
+
+**Features**
+
+* Version check via small JSON
+* Update prompt redirecting to Play Store
+
+**Deliverables**
+
+* Manifest JSON hosted
+* App works fully offline
+* No forced updates
+
+---
+
+## 5. TESTING PIPELINE (KOTLIN + COMPOSE)
+
+This is what you actually do.
+
+### 5.1 Local Development Testing
+
+* Android Emulator (small + large screen)
+* One real phone minimum
+
+Test:
+
+* Cold start
+* App kill and relaunch
+* Phone reboot
+* Permission denial
+* Low storage scenario
+
+---
+
+### 5.2 UI Testing
+
+* Compose UI tests for:
+
+  * Navigation
+  * Habit completion
+  * Task rollover
+
+Do NOT aim for 100 percent coverage.
+
+---
+
+### 5.3 Manual UX Testing
+
+This matters more.
+
+* Can you add a habit in under 10 seconds?
+* Can you log a day without friction?
+* Does anything feel annoying after 5 days?
+
+If yes, fix it.
+
+---
+
+## 6. BUILD AND DEPLOYMENT
+
+### Debug Build
+
+* Run directly from Android Studio
+* Logcat for crashes
+* Debug overlay enabled
+
+### Release Build
+
+* Generate signed AAB
+* Upload to Play Store Internal Testing
+
+### Feedback Cycle
+
+* Small tester group
+* Fix crashes first
+* Ship weekly updates
+
+---
+
+## 7. DELIVERABLES SUMMARY
+
+When v1 is DONE, you have:
+
+* HabitMind app running on your phone
+* Stable local data
+* Clean Compose UI
+* Release ready AAB
+* Clear scope for v2
+
+---
+
+## 8. HARD TRUTH (IMPORTANT)
+
+Jetpack Compose gives you power, but:
+
+* Over animating will kill UX
+* Over engineering will delay shipping
+* You must use this daily yourself
+
+If HabitMind does not survive **your own ADHD**, it failed.
+
+---
+
