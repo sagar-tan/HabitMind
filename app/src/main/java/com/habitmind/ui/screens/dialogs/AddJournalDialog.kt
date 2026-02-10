@@ -1,7 +1,12 @@
 package com.habitmind.ui.screens.dialogs
 
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -22,13 +27,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Photo
+import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -44,14 +53,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.habitmind.data.database.entity.JournalEntryType
 import com.habitmind.ui.theme.Accent
 import com.habitmind.ui.theme.CardBackground
@@ -62,13 +75,17 @@ import com.habitmind.ui.theme.Spacing
 import com.habitmind.ui.theme.TextMuted
 import com.habitmind.ui.theme.TextPrimary
 import com.habitmind.ui.theme.TextSecondary
+import kotlinx.coroutines.delay
 
 @Composable
 fun AddJournalDialog(
     onDismiss: () -> Unit,
     onConfirm: (content: String, type: JournalEntryType, tags: String?, mood: String?) -> Unit,
     onVoiceRecord: () -> Unit = {},
-    onAddPhoto: () -> Unit = {}
+    onAddPhoto: () -> Unit = {},
+    selectedImageUri: Uri? = null,
+    isRecording: Boolean = false,
+    voiceRecordingPath: String? = null
 ) {
     var isVisible by remember { mutableStateOf(false) }
     var journalContent by remember { mutableStateOf("") }
@@ -78,7 +95,20 @@ fun AddJournalDialog(
     
     LaunchedEffect(Unit) {
         isVisible = true
-        focusRequester.requestFocus()
+        delay(100)
+        try {
+            focusRequester.requestFocus()
+        } catch (e: Exception) {
+            // Focus request may fail, ignore
+        }
+    }
+    
+    // Auto-detect type from media state
+    LaunchedEffect(selectedImageUri) {
+        if (selectedImageUri != null) selectedType = JournalEntryType.IMAGE
+    }
+    LaunchedEffect(isRecording, voiceRecordingPath) {
+        if (isRecording || voiceRecordingPath != null) selectedType = JournalEntryType.VOICE
     }
     
     Box(
@@ -152,9 +182,9 @@ fun AddJournalDialog(
                         modifier = Modifier.weight(1f)
                     )
                     JournalTypeChip(
-                        icon = Icons.Outlined.Mic,
-                        label = "Voice",
-                        isSelected = selectedType == JournalEntryType.VOICE,
+                        icon = if (isRecording) Icons.Outlined.Stop else Icons.Outlined.Mic,
+                        label = if (isRecording) "Stop" else "Voice",
+                        isSelected = selectedType == JournalEntryType.VOICE || isRecording,
                         onClick = { 
                             selectedType = JournalEntryType.VOICE
                             onVoiceRecord()
@@ -173,11 +203,75 @@ fun AddJournalDialog(
                     )
                 }
                 
-                Spacer(modifier = Modifier.height(Spacing.lg))
+                Spacer(modifier = Modifier.height(Spacing.md))
+                
+                // Media indicators
+                if (isRecording) {
+                    RecordingIndicator()
+                    Spacer(modifier = Modifier.height(Spacing.md))
+                } else if (voiceRecordingPath != null && !isRecording) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Accent.copy(alpha = 0.1f))
+                            .border(1.dp, Accent.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                            .padding(Spacing.md),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Accent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(Spacing.sm))
+                        Text(
+                            text = "Voice recording attached",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Accent
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(Spacing.md))
+                }
+                
+                if (selectedImageUri != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(1.dp, Accent.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                    ) {
+                        AsyncImage(
+                            model = selectedImageUri,
+                            contentDescription = "Selected image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        // Small badge
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Accent.copy(alpha = 0.9f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "✓ Attached",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(Spacing.md))
+                }
                 
                 // Content input
                 Text(
-                    text = "What's on your mind?",
+                    text = if (selectedType == JournalEntryType.VOICE) "Add a caption (optional)" 
+                           else "What's on your mind?",
                     style = MaterialTheme.typography.labelMedium,
                     color = TextSecondary
                 )
@@ -187,7 +281,7 @@ fun AddJournalDialog(
                     onValueChange = { journalContent = it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(150.dp)
+                        .height(if (selectedImageUri != null || voiceRecordingPath != null) 80.dp else 150.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(CardBackground)
                         .border(1.dp, GlassBorder, RoundedCornerShape(12.dp))
@@ -252,12 +346,19 @@ fun AddJournalDialog(
                 
                 Spacer(modifier = Modifier.height(Spacing.xl))
                 
-                // Confirm button
+                // Confirm button - allow save with media even if text is empty
+                val hasContent = journalContent.isNotBlank() || selectedImageUri != null || voiceRecordingPath != null
                 Button(
                     onClick = {
-                        if (journalContent.isNotBlank()) {
+                        if (hasContent) {
                             onConfirm(
-                                journalContent.trim(),
+                                journalContent.trim().ifEmpty { 
+                                    when (selectedType) {
+                                        JournalEntryType.VOICE -> "Voice note"
+                                        JournalEntryType.IMAGE -> "Photo entry"
+                                        else -> journalContent.trim()
+                                    }
+                                },
                                 selectedType,
                                 tags.ifBlank { null },
                                 null
@@ -272,7 +373,7 @@ fun AddJournalDialog(
                         contentColor = Color.White
                     ),
                     shape = RoundedCornerShape(12.dp),
-                    enabled = journalContent.isNotBlank()
+                    enabled = hasContent && !isRecording
                 ) {
                     Text(
                         text = "Save Entry",
@@ -281,6 +382,44 @@ fun AddJournalDialog(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun RecordingIndicator() {
+    val infiniteTransition = rememberInfiniteTransition(label = "recording")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF991B1B).copy(alpha = 0.15f))
+            .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+            .padding(Spacing.md),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .scale(pulseScale)
+                .clip(CircleShape)
+                .background(Color(0xFFEF4444))
+        )
+        Spacer(modifier = Modifier.width(Spacing.sm))
+        Text(
+            text = "Recording... Tap Voice to stop",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color(0xFFEF4444)
+        )
     }
 }
 

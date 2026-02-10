@@ -56,6 +56,7 @@ import com.habitmind.ui.theme.Spacing
 import com.habitmind.ui.theme.TextMuted
 import com.habitmind.ui.theme.TextPrimary
 import com.habitmind.ui.theme.TextSecondary
+import kotlinx.coroutines.delay
 
 /**
  * Quick Note Dialog for rapid one-tap note capture
@@ -72,7 +73,12 @@ fun QuickNoteDialog(
     
     LaunchedEffect(Unit) {
         isVisible = true
-        focusRequester.requestFocus()
+        delay(100)
+        try {
+            focusRequester.requestFocus()
+        } catch (e: Exception) {
+            // Focus request may fail, ignore
+        }
     }
     
     Box(

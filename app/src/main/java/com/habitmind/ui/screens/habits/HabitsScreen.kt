@@ -55,6 +55,7 @@ import com.habitmind.ui.viewmodel.HabitsViewModel
 @Composable
 fun HabitsScreen(
     onAddHabit: () -> Unit = {},
+    onHabitClick: (Long) -> Unit = {},
     viewModel: HabitsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -114,6 +115,7 @@ fun HabitsScreen(
                     HabitCard(
                         habitWithStreak = habitWithStreak,
                         onToggle = { viewModel.toggleCompletion(habitWithStreak.habit.id) },
+                        onClick = { onHabitClick(habitWithStreak.habit.id) },
                         modifier = Modifier.staggeredEntrance(index, delayPerItem = 60)
                     )
                 }
@@ -130,6 +132,7 @@ fun HabitsScreen(
 fun HabitCard(
     habitWithStreak: HabitWithStreak,
     onToggle: () -> Unit,
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -170,7 +173,7 @@ fun HabitCard(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onToggle
+                onClick = onClick
             )
             .padding(Spacing.lg),
         horizontalAlignment = Alignment.CenterHorizontally,

@@ -31,7 +31,7 @@ import com.habitmind.data.database.entity.Task
         Goal::class,
         GoalUpdate::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

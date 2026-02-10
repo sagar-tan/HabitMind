@@ -4,6 +4,7 @@ import com.habitmind.data.database.dao.HabitDao
 import com.habitmind.data.database.entity.Habit
 import com.habitmind.data.database.entity.HabitCompletion
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -37,15 +38,22 @@ class HabitRepository(private val habitDao: HabitDao) {
     
     suspend fun archiveHabit(id: Long) = habitDao.archive(id)
     
-    // Get habits with their completion status and streak for a specific date
+    /**
+     * Get habits with completion status and streak.
+     * Combines both habits and completions flows so that toggling
+     * a completion immediately triggers UI update.
+     */
     fun getHabitsWithStreak(date: LocalDate = LocalDate.now()): Flow<List<HabitWithStreak>> {
-        return habitDao.getAllActive().map { habits ->
+        return combine(
+            habitDao.getAllActive(),
+            habitDao.getCompletionsForDate(date)
+        ) { habits, completions ->
             habits.map { habit ->
-                val completion = habitDao.getCompletion(habit.id, date)
+                val isCompletedToday = completions.any { it.habitId == habit.id && it.isCompleted }
                 val streak = calculateStreak(habit.id, date)
                 HabitWithStreak(
                     habit = habit,
-                    isCompletedToday = completion?.isCompleted == true,
+                    isCompletedToday = isCompletedToday,
                     currentStreak = streak
                 )
             }
@@ -114,3 +122,4 @@ class HabitRepository(private val habitDao: HabitDao) {
         return habitDao.getCompletionsForHabit(habitId)
     }
 }
+

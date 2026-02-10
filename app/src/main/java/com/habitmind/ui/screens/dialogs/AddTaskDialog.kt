@@ -60,6 +60,7 @@ import com.habitmind.ui.theme.TextMuted
 import com.habitmind.ui.theme.TextPrimary
 import com.habitmind.ui.theme.TextSecondary
 import java.time.LocalDate
+import kotlinx.coroutines.delay
 
 @Composable
 fun AddTaskDialog(
@@ -74,7 +75,12 @@ fun AddTaskDialog(
     
     LaunchedEffect(Unit) {
         isVisible = true
-        focusRequester.requestFocus()
+        delay(100)
+        try {
+            focusRequester.requestFocus()
+        } catch (e: Exception) {
+            // Focus request may fail, ignore
+        }
     }
     
     Box(

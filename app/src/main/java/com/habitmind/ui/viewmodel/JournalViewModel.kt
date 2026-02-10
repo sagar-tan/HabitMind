@@ -7,9 +7,13 @@ import com.habitmind.HabitMindApplication
 import com.habitmind.data.database.entity.DailyLog
 import com.habitmind.data.database.entity.JournalEntry
 import com.habitmind.data.database.entity.JournalEntryType
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class JournalUiState(
@@ -20,50 +24,39 @@ data class JournalUiState(
     val error: String? = null
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class JournalViewModel(application: Application) : AndroidViewModel(application) {
     
     private val repository = (application as HabitMindApplication).journalRepository
     
-    private val _uiState = MutableStateFlow(JournalUiState())
-    val uiState: StateFlow<JournalUiState> = _uiState.asStateFlow()
+    private val _filter = MutableStateFlow<JournalEntryType?>(null)
     
-    init {
-        loadEntries()
-    }
-    
-    private fun loadEntries() {
-        viewModelScope.launch {
-            repository.allEntries.collect { entries ->
-                _uiState.value = _uiState.value.copy(
-                    entries = entries,
-                    isLoading = false
-                )
-            }
-        }
-        
-        viewModelScope.launch {
-            repository.allDailyLogs.collect { logs ->
-                _uiState.value = _uiState.value.copy(
-                    dailyLogs = logs
-                )
-            }
-        }
-    }
+    /**
+     * Single reactive pipeline:
+     * filter changes → flatMapLatest to correct query → combine with dailyLogs → emit UiState
+     */
+    val uiState: StateFlow<JournalUiState> = combine(
+        _filter.flatMapLatest { type ->
+            if (type != null) repository.getEntriesByType(type)
+            else repository.allEntries
+        },
+        repository.allDailyLogs,
+        _filter
+    ) { entries, logs, filter ->
+        JournalUiState(
+            entries = entries,
+            dailyLogs = logs,
+            isLoading = false,
+            filter = filter
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = JournalUiState()
+    )
     
     fun setFilter(type: JournalEntryType?) {
-        _uiState.value = _uiState.value.copy(filter = type)
-        
-        viewModelScope.launch {
-            val flow = if (type != null) {
-                repository.getEntriesByType(type)
-            } else {
-                repository.allEntries
-            }
-            
-            flow.collect { entries ->
-                _uiState.value = _uiState.value.copy(entries = entries)
-            }
-        }
+        _filter.value = type
     }
     
     fun addTextEntry(content: String, tags: String = "", mood: Int? = null) {

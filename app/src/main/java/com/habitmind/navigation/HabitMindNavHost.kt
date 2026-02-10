@@ -1,5 +1,14 @@
 package com.habitmind.navigation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.media.MediaRecorder
+import android.net.Uri
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -12,6 +21,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -45,18 +57,24 @@ import com.habitmind.ui.screens.insights.InsightsScreen
 import com.habitmind.ui.screens.journal.JournalScreen
 import com.habitmind.ui.screens.plan.PlanScreen
 import com.habitmind.ui.screens.onboarding.OnboardingScreen
+import com.habitmind.ui.screens.onboarding.PrivacyConfirmScreen
+import com.habitmind.ui.screens.onboarding.ProfileSetupScreen
+import com.habitmind.ui.screens.onboarding.WalkthroughScreen
 import com.habitmind.ui.screens.onboarding.SplashScreen
+import com.habitmind.ui.screens.habits.HabitDetailScreen
+import com.habitmind.ui.screens.review.WeeklyReviewScreen
+import com.habitmind.ui.screens.goals.GoalsScreen
 import com.habitmind.ui.screens.settings.SettingsScreen
-import com.habitmind.ui.screens.sheets.AddItemSheet
 import com.habitmind.ui.theme.DarkBackground
 import com.habitmind.ui.theme.Motion
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
 
 // Dialog type enum
 enum class ActiveDialog {
-    NONE, ADD_SHEET, ADD_HABIT, ADD_TASK, ADD_JOURNAL, QUICK_NOTE
+    NONE, ADD_HABIT, ADD_TASK, ADD_JOURNAL, QUICK_NOTE
 }
 
 @Composable
@@ -82,6 +100,82 @@ fun HabitMindNavHost(
     
     // State for dialogs
     var activeDialog by remember { mutableStateOf(ActiveDialog.NONE) }
+    
+    // Request notification permission on Android 13+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { /* granted or denied, no action needed */ }
+    
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+    
+    // Media state for journal
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var voiceRecordingPath by remember { mutableStateOf<String?>(null) }
+    var isRecording by remember { mutableStateOf(false) }
+    var mediaRecorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            selectedImageUri = uri
+            Toast.makeText(context, "Image selected!", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    // Audio permission launcher
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            // Start recording
+            try {
+                val audioFile = File(context.filesDir, "voice_${System.currentTimeMillis()}.mp4")
+                val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    MediaRecorder(context)
+                } else {
+                    @Suppress("DEPRECATION")
+                    MediaRecorder()
+                }
+                recorder.apply {
+                    setAudioSource(MediaRecorder.AudioSource.MIC)
+                    setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                    setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                    setAudioSamplingRate(44100)
+                    setAudioEncodingBitRate(128000)
+                    setOutputFile(audioFile.absolutePath)
+                    prepare()
+                    start()
+                }
+                mediaRecorder = recorder
+                voiceRecordingPath = audioFile.absolutePath
+                isRecording = true
+                Toast.makeText(context, "Recording started...", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Recording failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(context, "Microphone permission needed for recording", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    // Cleanup media recorder  
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                mediaRecorder?.release()
+            } catch (_: Exception) { }
+        }
+    }
     
     // User preferences from DataStore
     val userName by preferences.userName.collectAsState(initial = null)
@@ -145,16 +239,58 @@ fun HabitMindNavHost(
                     )
                 }
                 
-                // Onboarding
+                // Onboarding - collects name, then chains to privacy/profile/walkthrough
                 composable(Screen.Onboarding.route) {
                     OnboardingScreen(
                         onComplete = { name ->
-                            scope.launch {
-                                preferences.saveUserName(name)
-                                preferences.setOnboardingCompleted(true)
-                            }
-                            navController.navigate(Screen.Home.route) {
+                            scope.launch { preferences.saveUserName(name) }
+                            navController.navigate(Screen.PrivacyConfirm.route) {
                                 popUpTo(Screen.Onboarding.route) { inclusive = true }
+                            }
+                        }
+                    )
+                }
+                
+                // Privacy confirmation
+                composable(Screen.PrivacyConfirm.route) {
+                    PrivacyConfirmScreen(
+                        onContinue = {
+                            navController.navigate(Screen.ProfileSetup.route) {
+                                popUpTo(Screen.PrivacyConfirm.route) { inclusive = true }
+                            }
+                        }
+                    )
+                }
+                
+                // Profile setup (optional)
+                composable(Screen.ProfileSetup.route) {
+                    ProfileSetupScreen(
+                        onContinue = {
+                            navController.navigate(Screen.Walkthrough.route) {
+                                popUpTo(Screen.ProfileSetup.route) { inclusive = true }
+                            }
+                        },
+                        onSkip = {
+                            navController.navigate(Screen.Walkthrough.route) {
+                                popUpTo(Screen.ProfileSetup.route) { inclusive = true }
+                            }
+                        }
+                    )
+                }
+                
+                // Walkthrough slides
+                composable(Screen.Walkthrough.route) {
+                    WalkthroughScreen(
+                        onComplete = {
+                            scope.launch { preferences.setOnboardingCompleted(true) }
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Walkthrough.route) { inclusive = true }
+                            }
+                        },
+                        onSkip = {
+                            scope.launch { preferences.setOnboardingCompleted(true) }
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Walkthrough.route) { inclusive = true }
                             }
                         }
                     )
@@ -164,11 +300,8 @@ fun HabitMindNavHost(
                 composable(Screen.Welcome.route) {
                     OnboardingScreen(
                         onComplete = { name ->
-                            scope.launch {
-                                preferences.saveUserName(name)
-                                preferences.setOnboardingCompleted(true)
-                            }
-                            navController.navigate(Screen.Home.route) {
+                            scope.launch { preferences.saveUserName(name) }
+                            navController.navigate(Screen.PrivacyConfirm.route) {
                                 popUpTo(Screen.Welcome.route) { inclusive = true }
                             }
                         }
@@ -188,19 +321,22 @@ fun HabitMindNavHost(
                 
                 composable(Screen.Plan.route) {
                     PlanScreen(
-                        onAddTask = { activeDialog = ActiveDialog.ADD_SHEET }
+                        onAddTask = { activeDialog = ActiveDialog.ADD_TASK }
                     )
                 }
                 
                 composable(Screen.Habits.route) {
                     HabitsScreen(
-                        onAddHabit = { activeDialog = ActiveDialog.ADD_SHEET }
+                        onAddHabit = { activeDialog = ActiveDialog.ADD_HABIT },
+                        onHabitClick = { habitId ->
+                            navController.navigate(Screen.HabitDetail.createRoute(habitId))
+                        }
                     )
                 }
                 
                 composable(Screen.Journal.route) {
                     JournalScreen(
-                        onAddEntry = { activeDialog = ActiveDialog.ADD_SHEET }
+                        onAddEntry = { activeDialog = ActiveDialog.ADD_JOURNAL }
                     )
                 }
                 
@@ -214,6 +350,37 @@ fun HabitMindNavHost(
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }
+                
+                // Habit Detail
+                composable(
+                    route = Screen.HabitDetail.route,
+                    arguments = listOf(
+                        androidx.navigation.navArgument("habitId") {
+                            type = androidx.navigation.NavType.LongType
+                        }
+                    )
+                ) { backStackEntry ->
+                    val habitId = backStackEntry.arguments?.getLong("habitId") ?: return@composable
+                    HabitDetailScreen(
+                        habitId = habitId,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                
+                // Weekly Review
+                composable(Screen.WeeklyReview.route) {
+                    WeeklyReviewScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                
+                // Goals
+                composable(Screen.Goals.route) {
+                    GoalsScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
             }
         }
         
@@ -234,10 +401,17 @@ fun HabitMindNavHost(
             )
         }
         
-        // Floating FAB - positioned above navbar, right side
+        // Floating FAB - context-aware, directly opens relevant dialog
         if (showFAB) {
             FloatingGlassFAB(
-                onClick = { activeDialog = ActiveDialog.ADD_SHEET },
+                onClick = {
+                    activeDialog = when (currentRoute) {
+                        "plan" -> ActiveDialog.ADD_TASK
+                        "habits" -> ActiveDialog.ADD_HABIT
+                        "journal" -> ActiveDialog.ADD_JOURNAL
+                        else -> ActiveDialog.ADD_TASK
+                    }
+                },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 20.dp, bottom = 100.dp)
@@ -247,27 +421,22 @@ fun HabitMindNavHost(
         
         // Dialog handling
         when (activeDialog) {
-            ActiveDialog.ADD_SHEET -> {
-                AddItemSheet(
-                    currentScreen = currentRoute ?: "home",
-                    onDismiss = { activeDialog = ActiveDialog.NONE },
-                    onAddTask = { activeDialog = ActiveDialog.ADD_TASK },
-                    onAddHabit = { activeDialog = ActiveDialog.ADD_HABIT },
-                    onAddJournalEntry = { activeDialog = ActiveDialog.ADD_JOURNAL }
-                )
-            }
-            
             ActiveDialog.ADD_HABIT -> {
                 AddHabitDialog(
                     onDismiss = { activeDialog = ActiveDialog.NONE },
                     onConfirm = { name, color, reminderTime ->
                         scope.launch {
-                            val habit = Habit(
-                                name = name,
-                                color = color,
-                                reminderTime = reminderTime
-                            )
-                            habitRepository.insertHabit(habit)
+                            try {
+                                val habit = Habit(
+                                    name = name,
+                                    color = color,
+                                    reminderTime = reminderTime
+                                )
+                                habitRepository.insertHabit(habit)
+                                Toast.makeText(context, "Habit added!", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
                         }
                         activeDialog = ActiveDialog.NONE
                     }
@@ -279,13 +448,18 @@ fun HabitMindNavHost(
                     onDismiss = { activeDialog = ActiveDialog.NONE },
                     onConfirm = { title, description, estimatedMinutes, dueDate ->
                         scope.launch {
-                            val task = Task(
-                                title = title,
-                                description = description ?: "",
-                                date = dueDate,
-                                estimatedMinutes = estimatedMinutes
-                            )
-                            taskRepository.insertTask(task)
+                            try {
+                                val task = Task(
+                                    title = title,
+                                    description = description ?: "",
+                                    date = dueDate,
+                                    estimatedMinutes = estimatedMinutes
+                                )
+                                taskRepository.insertTask(task)
+                                Toast.makeText(context, "Task added!", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
                         }
                         activeDialog = ActiveDialog.NONE
                     }
@@ -294,19 +468,111 @@ fun HabitMindNavHost(
             
             ActiveDialog.ADD_JOURNAL -> {
                 AddJournalDialog(
-                    onDismiss = { activeDialog = ActiveDialog.NONE },
+                    onDismiss = {
+                        // Cleanup media state
+                        selectedImageUri = null
+                        voiceRecordingPath = null
+                        isRecording = false
+                        try { mediaRecorder?.stop(); mediaRecorder?.release() } catch (_: Exception) { }
+                        mediaRecorder = null
+                        activeDialog = ActiveDialog.NONE
+                    },
                     onConfirm = { content, type, tags, mood ->
                         scope.launch {
-                            val entry = JournalEntry(
-                                type = type,
-                                content = content,
-                                tags = tags ?: "",
-                                mood = mood?.toIntOrNull()
-                            )
-                            journalRepository.insertEntry(entry)
+                            try {
+                                // Copy image to app storage if selected
+                                var savedMediaPath: String? = null
+                                if (selectedImageUri != null) {
+                                    try {
+                                        val inputStream = context.contentResolver.openInputStream(selectedImageUri!!)
+                                        val imageFile = File(context.filesDir, "journal_img_${System.currentTimeMillis()}.jpg")
+                                        inputStream?.use { input ->
+                                            imageFile.outputStream().use { output ->
+                                                input.copyTo(output)
+                                            }
+                                        }
+                                        savedMediaPath = imageFile.absolutePath
+                                    } catch (_: Exception) { }
+                                } else if (voiceRecordingPath != null) {
+                                    savedMediaPath = voiceRecordingPath
+                                }
+                                
+                                val entry = JournalEntry(
+                                    type = type,
+                                    content = content,
+                                    tags = tags ?: "",
+                                    mood = mood?.toIntOrNull(),
+                                    mediaPath = savedMediaPath
+                                )
+                                journalRepository.insertEntry(entry)
+                                Toast.makeText(context, "Journal entry saved!", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
                         }
+                        selectedImageUri = null
+                        voiceRecordingPath = null
+                        isRecording = false
                         activeDialog = ActiveDialog.NONE
-                    }
+                    },
+                    onVoiceRecord = {
+                        if (isRecording) {
+                            // Stop recording
+                            try {
+                                mediaRecorder?.stop()
+                                mediaRecorder?.release()
+                                mediaRecorder = null
+                                isRecording = false
+                                Toast.makeText(context, "Recording saved!", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                isRecording = false
+                                Toast.makeText(context, "Recording error", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            // Check permission & start recording
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+                                == PackageManager.PERMISSION_GRANTED
+                            ) {
+                                try {
+                                    val audioFile = File(context.filesDir, "voice_${System.currentTimeMillis()}.mp4")
+                                    val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                        MediaRecorder(context)
+                                    } else {
+                                        @Suppress("DEPRECATION")
+                                        MediaRecorder()
+                                    }
+                                    recorder.apply {
+                                        setAudioSource(MediaRecorder.AudioSource.MIC)
+                                        setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                                        setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                                        setAudioSamplingRate(44100)
+                                        setAudioEncodingBitRate(128000)
+                                        setOutputFile(audioFile.absolutePath)
+                                        prepare()
+                                        start()
+                                    }
+                                    mediaRecorder = recorder
+                                    voiceRecordingPath = audioFile.absolutePath
+                                    isRecording = true
+                                    selectedImageUri = null // Clear image if switching to voice
+                                    Toast.makeText(context, "🎙 Recording... tap again to stop", Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Recording failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        }
+                    },
+                    onAddPhoto = {
+                        voiceRecordingPath = null // Clear voice if switching to photo
+                        imagePickerLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    selectedImageUri = selectedImageUri,
+                    isRecording = isRecording,
+                    voiceRecordingPath = voiceRecordingPath
                 )
             }
             
@@ -315,7 +581,12 @@ fun HabitMindNavHost(
                     onDismiss = { activeDialog = ActiveDialog.NONE },
                     onConfirm = { content ->
                         scope.launch {
-                            journalRepository.addQuickNote(content)
+                            try {
+                                journalRepository.addQuickNote(content)
+                                Toast.makeText(context, "Note saved!", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
                         }
                         activeDialog = ActiveDialog.NONE
                     }

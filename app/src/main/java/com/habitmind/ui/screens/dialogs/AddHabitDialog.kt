@@ -59,17 +59,18 @@ import com.habitmind.ui.theme.Spacing
 import com.habitmind.ui.theme.TextMuted
 import com.habitmind.ui.theme.TextPrimary
 import com.habitmind.ui.theme.TextSecondary
+import kotlinx.coroutines.delay
 
-// Available habit colors
+// Available habit colors with their hex values
 val habitColors = listOf(
-    Color(0xFF6366F1), // Indigo
-    Color(0xFF8B5CF6), // Violet
-    Color(0xFFEC4899), // Pink
-    Color(0xFFF97316), // Orange
-    Color(0xFF22C55E), // Green
-    Color(0xFF06B6D4), // Cyan
-    Color(0xFFEAB308), // Yellow
-    Color(0xFF94A3B8)  // Gray
+    Color(0xFF6366F1) to "#6366F1", // Indigo
+    Color(0xFF8B5CF6) to "#8B5CF6", // Violet
+    Color(0xFFEC4899) to "#EC4899", // Pink
+    Color(0xFFF97316) to "#F97316", // Orange
+    Color(0xFF22C55E) to "#22C55E", // Green
+    Color(0xFF06B6D4) to "#06B6D4", // Cyan
+    Color(0xFFEAB308) to "#EAB308", // Yellow
+    Color(0xFF94A3B8) to "#94A3B8"  // Gray
 )
 
 @Composable
@@ -84,7 +85,12 @@ fun AddHabitDialog(
     
     LaunchedEffect(Unit) {
         isVisible = true
-        focusRequester.requestFocus()
+        delay(100) // Wait for composable to be laid out
+        try {
+            focusRequester.requestFocus()
+        } catch (e: Exception) {
+            // Focus request may fail, ignore
+        }
     }
     
     Box(
@@ -194,7 +200,7 @@ fun AddHabitDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
-                    habitColors.forEachIndexed { index, color ->
+                    habitColors.forEachIndexed { index, (color, _) ->
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
@@ -212,11 +218,10 @@ fun AddHabitDialog(
                 
                 Spacer(modifier = Modifier.height(Spacing.xl))
                 
-                // Confirm button
                 Button(
                     onClick = {
                         if (habitName.isNotBlank()) {
-                            val colorHex = String.format("#%06X", 0xFFFFFF and habitColors[selectedColorIndex].hashCode())
+                            val colorHex = habitColors[selectedColorIndex].second
                             onConfirm(habitName.trim(), colorHex, null)
                         }
                     },

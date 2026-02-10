@@ -3,14 +3,12 @@ package com.habitmind.data.export
 import android.content.Context
 import com.habitmind.HabitMindApplication
 import com.habitmind.data.database.entity.Habit
-import com.habitmind.data.database.entity.HabitCompletion
 import com.habitmind.data.database.entity.JournalEntry
 import com.habitmind.data.database.entity.Task
 import com.habitmind.data.media.MediaStorageHelper
 import kotlinx.coroutines.flow.first
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -18,15 +16,11 @@ import java.time.format.DateTimeFormatter
 /**
  * Data export/import manager for HabitMind
  * Exports data to JSON for backup and portability
+ * Uses org.json for simplicity (no additional dependencies needed)
  */
 class DataExportManager(private val context: Context) {
     
     private val mediaHelper = MediaStorageHelper(context)
-    
-    private val json = Json { 
-        prettyPrint = true
-        ignoreUnknownKeys = true
-    }
     
     // Export all data to JSON file
     suspend fun exportAllData(): ExportResult {
@@ -41,20 +35,53 @@ class DataExportManager(private val context: Context) {
             // Get user preferences
             val userName = app.userPreferences.userName.first()
             
-            // Create export data structure
-            val exportData = ExportData(
-                version = 1,
-                exportedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                userName = userName,
-                habits = habits.map { it.toExportHabit() },
-                tasks = tasks.map { it.toExportTask() },
-                journalEntries = journalEntries.map { it.toExportJournal() }
-            )
+            // Create JSON export
+            val exportJson = JSONObject().apply {
+                put("version", 1)
+                put("exportedAt", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                put("userName", userName ?: "")
+                
+                // Habits
+                put("habits", JSONArray().apply {
+                    habits.forEach { habit ->
+                        put(JSONObject().apply {
+                            put("name", habit.name)
+                            put("color", habit.color)
+                            put("reminderTime", habit.reminderTime ?: "")
+                            put("isArchived", habit.isArchived)
+                        })
+                    }
+                })
+                
+                // Tasks
+                put("tasks", JSONArray().apply {
+                    tasks.forEach { task ->
+                        put(JSONObject().apply {
+                            put("title", task.title)
+                            put("description", task.description)
+                            put("estimatedMinutes", task.estimatedMinutes)
+                            put("progress", task.progress)
+                            put("priority", task.priority)
+                        })
+                    }
+                })
+                
+                // Journal entries
+                put("journalEntries", JSONArray().apply {
+                    journalEntries.forEach { entry ->
+                        put(JSONObject().apply {
+                            put("content", entry.content)
+                            put("tags", entry.tags)
+                            put("type", entry.type.name)
+                        })
+                    }
+                })
+            }
             
             // Write to file
             val filename = "habitmind_backup_${System.currentTimeMillis()}.json"
             val exportFile = File(mediaHelper.getExportDirectory(), filename)
-            exportFile.writeText(json.encodeToString(exportData))
+            exportFile.writeText(exportJson.toString(2)) // Pretty print with 2-space indent
             
             ExportResult.Success(exportFile.absolutePath)
         } catch (e: Exception) {
@@ -71,17 +98,19 @@ class DataExportManager(private val context: Context) {
             }
             
             val jsonContent = file.readText()
-            val exportData = json.decodeFromString<ExportData>(jsonContent)
+            val exportJson = JSONObject(jsonContent)
             
             val app = context.applicationContext as HabitMindApplication
             
             // Import habits
             var habitsImported = 0
-            exportData.habits.forEach { exportHabit ->
+            val habitsArray = exportJson.optJSONArray("habits") ?: JSONArray()
+            for (i in 0 until habitsArray.length()) {
+                val habitJson = habitsArray.getJSONObject(i)
                 val habit = Habit(
-                    name = exportHabit.name,
-                    color = exportHabit.color,
-                    reminderTime = exportHabit.reminderTime
+                    name = habitJson.getString("name"),
+                    color = habitJson.optString("color", "#6366F1"),
+                    reminderTime = habitJson.optString("reminderTime").takeIf { it.isNotEmpty() }
                 )
                 app.habitRepository.insertHabit(habit)
                 habitsImported++
@@ -89,12 +118,14 @@ class DataExportManager(private val context: Context) {
             
             // Import tasks
             var tasksImported = 0
-            exportData.tasks.forEach { exportTask ->
+            val tasksArray = exportJson.optJSONArray("tasks") ?: JSONArray()
+            for (i in 0 until tasksArray.length()) {
+                val taskJson = tasksArray.getJSONObject(i)
                 val task = Task(
-                    title = exportTask.title,
-                    description = exportTask.description,
-                    estimatedMinutes = exportTask.estimatedMinutes,
-                    progress = exportTask.progress
+                    title = taskJson.getString("title"),
+                    description = taskJson.optString("description", ""),
+                    estimatedMinutes = taskJson.optInt("estimatedMinutes", 30),
+                    progress = taskJson.optInt("progress", 0)
                 )
                 app.taskRepository.insertTask(task)
                 tasksImported++
@@ -102,18 +133,21 @@ class DataExportManager(private val context: Context) {
             
             // Import journal entries
             var entriesImported = 0
-            exportData.journalEntries.forEach { exportEntry ->
+            val entriesArray = exportJson.optJSONArray("journalEntries") ?: JSONArray()
+            for (i in 0 until entriesArray.length()) {
+                val entryJson = entriesArray.getJSONObject(i)
                 val entry = JournalEntry(
-                    content = exportEntry.content,
-                    tags = exportEntry.tags ?: ""
+                    content = entryJson.getString("content"),
+                    tags = entryJson.optString("tags", "")
                 )
                 app.journalRepository.insertEntry(entry)
                 entriesImported++
             }
             
             // Update user name if provided
-            exportData.userName?.let { name ->
-                app.userPreferences.saveUserName(name)
+            val userName = exportJson.optString("userName")
+            if (userName.isNotEmpty()) {
+                app.userPreferences.saveUserName(userName)
             }
             
             ImportResult.Success(
@@ -156,63 +190,6 @@ class DataExportManager(private val context: Context) {
         }
     }
 }
-
-// Export data classes
-@Serializable
-data class ExportData(
-    val version: Int,
-    val exportedAt: String,
-    val userName: String?,
-    val habits: List<ExportHabit>,
-    val tasks: List<ExportTask>,
-    val journalEntries: List<ExportJournalEntry>
-)
-
-@Serializable
-data class ExportHabit(
-    val name: String,
-    val color: String,
-    val reminderTime: String?,
-    val isArchived: Boolean
-)
-
-@Serializable
-data class ExportTask(
-    val title: String,
-    val description: String,
-    val estimatedMinutes: Int,
-    val progress: Int,
-    val priority: Int
-)
-
-@Serializable
-data class ExportJournalEntry(
-    val content: String,
-    val tags: String?,
-    val type: String
-)
-
-// Extension functions for export conversion
-fun Habit.toExportHabit() = ExportHabit(
-    name = name,
-    color = color,
-    reminderTime = reminderTime,
-    isArchived = isArchived
-)
-
-fun Task.toExportTask() = ExportTask(
-    title = title,
-    description = description,
-    estimatedMinutes = estimatedMinutes,
-    progress = progress,
-    priority = priority
-)
-
-fun JournalEntry.toExportJournal() = ExportJournalEntry(
-    content = content,
-    tags = tags,
-    type = type.name
-)
 
 // Result types
 sealed class ExportResult {

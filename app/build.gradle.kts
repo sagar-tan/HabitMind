@@ -79,6 +79,12 @@ dependencies {
     implementation(libs.accompanist.navigation.animation)
     implementation(libs.accompanist.systemuicontroller)
 
+    // WorkManager
+    implementation(libs.androidx.work.runtime)
+
+    // Coil (image loading)
+    implementation(libs.coil.compose)
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

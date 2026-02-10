@@ -35,7 +35,7 @@ interface TaskDao {
     fun getAllTasks(): Flow<List<Task>>
     
     // Update progress
-    @Query("UPDATE tasks SET progress = :progress, completedAt = CASE WHEN :progress >= 100 THEN datetime('now') ELSE NULL END WHERE id = :taskId")
+    @Query("UPDATE tasks SET progress = :progress, completedAt = CASE WHEN :progress >= 100 THEN strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime') ELSE NULL END WHERE id = :taskId")
     suspend fun updateProgress(taskId: Long, progress: Int)
     
     // Get incomplete tasks before a date (for carry forward)

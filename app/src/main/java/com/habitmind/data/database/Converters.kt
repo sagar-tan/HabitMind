@@ -33,7 +33,15 @@ class Converters {
     
     @TypeConverter
     fun toLocalDateTime(value: String?): LocalDateTime? {
-        return value?.let { LocalDateTime.parse(it, dateTimeFormatter) }
+        return value?.let { 
+            // Handle both ISO format (2024-02-09T20:30:45) and SQLite format (2024-02-09 20:30:45)
+            val normalized = it.replace(" ", "T")
+            try {
+                LocalDateTime.parse(normalized, dateTimeFormatter)
+            } catch (e: Exception) {
+                null
+            }
+        }
     }
     
     // JournalEntryType converters

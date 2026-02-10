@@ -34,7 +34,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -124,6 +126,11 @@ fun HomeScreen(
                     )
                 }
             }
+        }
+        
+        // Mood indicator
+        item {
+            MoodIndicator(modifier = Modifier.fadeScaleIn())
         }
         
         // Today Summary Card with staggered animation
@@ -360,5 +367,65 @@ fun QuickActionButton(
             style = MaterialTheme.typography.labelMedium,
             color = TextSecondary
         )
+    }
+    }
+}
+
+@Composable
+private fun MoodIndicator(modifier: Modifier = Modifier) {
+    var selectedMood by remember { mutableIntStateOf(-1) }
+    val moods = listOf("😢", "😐", "😊", "😄", "🤩")
+    val labels = listOf("Terrible", "Meh", "Good", "Great", "Amazing")
+    
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(CardBackground)
+            .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
+            .padding(Spacing.md),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+    ) {
+        Text(
+            text = "How are you feeling?",
+            style = MaterialTheme.typography.labelLarge,
+            color = TextSecondary
+        )
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            moods.forEachIndexed { index, emoji ->
+                Column(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (selectedMood == index) Accent.copy(alpha = 0.15f) else CardBackground
+                        )
+                        .border(
+                            width = if (selectedMood == index) 1.dp else 0.dp,
+                            color = if (selectedMood == index) Accent.copy(alpha = 0.5f) else CardBackground,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .clickable { selectedMood = index }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = emoji,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    if (selectedMood == index) {
+                        Text(
+                            text = labels[index],
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Accent
+                        )
+                    }
+                }
+            }
+        }
     }
 }

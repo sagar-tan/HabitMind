@@ -7,6 +7,8 @@ import com.habitmind.data.repository.GoalRepository
 import com.habitmind.data.repository.HabitRepository
 import com.habitmind.data.repository.JournalRepository
 import com.habitmind.data.repository.TaskRepository
+import com.habitmind.notification.HabitMindNotificationHelper
+import com.habitmind.notification.NotificationScheduler
 
 /**
  * Application class for HabitMind
@@ -25,4 +27,15 @@ class HabitMindApplication : Application() {
     val taskRepository: TaskRepository by lazy { TaskRepository(database.taskDao()) }
     val journalRepository: JournalRepository by lazy { JournalRepository(database.journalDao()) }
     val goalRepository: GoalRepository by lazy { GoalRepository(database.goalDao()) }
+    
+    override fun onCreate() {
+        super.onCreate()
+        
+        // Create notification channels
+        HabitMindNotificationHelper(this)
+        
+        // Schedule notification workers
+        NotificationScheduler.initializeNotifications(this)
+    }
 }
+
