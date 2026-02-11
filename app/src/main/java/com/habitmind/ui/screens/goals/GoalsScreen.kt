@@ -325,12 +325,12 @@ private fun GoalCard(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(
-                            if (goal.progress >= value) Accent.copy(alpha = 0.2f)
+                            if (goal.progressPercent >= value) Accent.copy(alpha = 0.2f)
                             else CardBackground
                         )
                         .border(
                             1.dp,
-                            if (goal.progress >= value) Accent.copy(alpha = 0.3f) else GlassBorder,
+                            if (goal.progressPercent >= value) Accent.copy(alpha = 0.3f) else GlassBorder,
                             RoundedCornerShape(8.dp)
                         )
                         .clickable { onProgressUpdate(value) }
@@ -339,7 +339,7 @@ private fun GoalCard(
                     Text(
                         text = "$value%",
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (goal.progress >= value) Accent else TextMuted
+                        color = if (goal.progressPercent >= value) Accent else TextMuted
                     )
                 }
             }

@@ -80,4 +80,18 @@ class PlanViewModel(application: Application) : AndroidViewModel(application) {
             loadTasks()
         }
     }
+    
+    fun deferTask(task: Task) {
+        viewModelScope.launch {
+            repository.insertTask(
+                task.copy(
+                    id = 0,
+                    date = LocalDate.now().plusDays(1),
+                    isCarriedForward = true,
+                    completedAt = null
+                )
+            )
+            repository.deleteTask(task)
+        }
+    }
 }

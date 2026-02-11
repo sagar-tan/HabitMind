@@ -368,7 +368,6 @@ fun QuickActionButton(
             color = TextSecondary
         )
     }
-    }
 }
 
 @Composable
