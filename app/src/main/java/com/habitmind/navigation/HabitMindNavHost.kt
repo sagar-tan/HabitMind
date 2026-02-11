@@ -64,6 +64,7 @@ import com.habitmind.ui.screens.onboarding.SplashScreen
 import com.habitmind.ui.screens.habits.HabitDetailScreen
 import com.habitmind.ui.screens.review.WeeklyReviewScreen
 import com.habitmind.ui.screens.goals.GoalsScreen
+import com.habitmind.ui.screens.gantt.GanttTimelineScreen
 import com.habitmind.ui.screens.settings.SettingsScreen
 import com.habitmind.ui.theme.DarkBackground
 import com.habitmind.ui.theme.Motion

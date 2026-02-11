@@ -1,11 +1,13 @@
 package com.habitmind.ui.screens.plan
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -21,14 +23,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -36,6 +44,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.habitmind.data.database.entity.Task
@@ -52,12 +65,15 @@ import com.habitmind.ui.theme.TextPrimary
 import com.habitmind.ui.theme.TextSecondary
 import com.habitmind.ui.viewmodel.PlanViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlanScreen(
     onAddTask: () -> Unit = {},
     viewModel: PlanViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val haptic = LocalHapticFeedback.current
+    var editingTask by remember { mutableStateOf<Task?>(null) }
     
     LazyColumn(
         modifier = Modifier
@@ -91,6 +107,15 @@ fun PlanScreen(
                     text = "${uiState.averageProgress.toInt()}% complete",
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (uiState.averageProgress >= 70) Accent else TextSecondary
+                )
+            }
+            
+            // Swipe hint
+            if (uiState.tasks.isNotEmpty()) {
+                Text(
+                    text = "← Swipe to defer · Long press to edit →",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextMuted
                 )
             }
         }
@@ -132,14 +157,60 @@ fun PlanScreen(
                 }
             }
         } else {
-            itemsIndexed(uiState.tasks) { index, task ->
-                TaskCard(
-                    task = task,
-                    onProgressChange = { progress ->
-                        viewModel.updateProgress(task.id, progress)
+            itemsIndexed(
+                items = uiState.tasks,
+                key = { _, task -> task.id }
+            ) { index, task ->
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = { dismissValue ->
+                        if (dismissValue != SwipeToDismissBoxValue.Settled) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.deferTask(task)
+                            true
+                        } else false
+                    }
+                )
+                
+                SwipeToDismissBox(
+                    state = dismissState,
+                    backgroundContent = {
+                        // Defer background
+                        val color by animateColorAsState(
+                            targetValue = when (dismissState.targetValue) {
+                                SwipeToDismissBoxValue.Settled -> CardBackground
+                                else -> Accent.copy(alpha = 0.3f)
+                            },
+                            label = "dismissBg"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(color)
+                                .padding(horizontal = 24.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Text(
+                                text = "→ Defer to tomorrow",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = Accent
+                            )
+                        }
                     },
                     modifier = Modifier.staggeredEntrance(index)
-                )
+                ) {
+                    TaskCard(
+                        task = task,
+                        onProgressChange = { progress ->
+                            viewModel.updateProgress(task.id, progress)
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        },
+                        onLongPress = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            editingTask = task
+                        }
+                    )
+                }
             }
         }
         
@@ -147,30 +218,35 @@ fun PlanScreen(
             Spacer(modifier = Modifier.height(100.dp)) // Space for navbar + FAB
         }
     }
+    
+    // Edit dialog
+    editingTask?.let { task ->
+        EditTaskDialog(
+            task = task,
+            onDismiss = { editingTask = null },
+            onSave = { title, description, minutes ->
+                viewModel.updateProgress(task.id, task.progress) // keep progress
+                editingTask = null
+            },
+            onDelete = {
+                viewModel.deleteTask(task)
+                editingTask = null
+            }
+        )
+    }
 }
 
 @Composable
 fun TaskCard(
     task: Task,
     onProgressChange: (Int) -> Unit,
+    onLongPress: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
     var progress by remember(task.progress) { mutableFloatStateOf(task.progress.toFloat()) }
-    
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.98f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "taskScale"
-    )
     
     Column(
         modifier = modifier
-            .scale(scale)
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(
@@ -186,11 +262,11 @@ fun TaskCard(
                 color = if (task.progress >= 100) Accent.copy(alpha = 0.3f) else GlassBorder,
                 shape = RoundedCornerShape(16.dp)
             )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = { }
-            )
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = { onLongPress() }
+                )
+            }
             .padding(Spacing.lg),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
@@ -257,4 +333,53 @@ fun TaskCard(
             )
         }
     }
+}
+
+@Composable
+private fun EditTaskDialog(
+    task: Task,
+    onDismiss: () -> Unit,
+    onSave: (String, String, Int) -> Unit,
+    onDelete: () -> Unit
+) {
+    var title by remember { mutableStateOf(task.title) }
+    var description by remember { mutableStateOf(task.description) }
+    
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Task", color = TextPrimary) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                androidx.compose.material3.OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Title") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                androidx.compose.material3.OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                onClick = { onSave(title, description, task.estimatedMinutes) }
+            ) { Text("Save", color = Accent) }
+        },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                androidx.compose.material3.TextButton(
+                    onClick = onDelete
+                ) { Text("Delete", color = Color.Red.copy(alpha = 0.7f)) }
+                androidx.compose.material3.TextButton(
+                    onClick = onDismiss
+                ) { Text("Cancel", color = TextSecondary) }
+            }
+        },
+        containerColor = CardBackground
+    )
 }
