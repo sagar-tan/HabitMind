@@ -103,6 +103,12 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
         }
     }
     
+    fun updateEntry(entry: JournalEntry) {
+        viewModelScope.launch {
+            repository.updateEntry(entry)
+        }
+    }
+    
     fun deleteEntry(entry: JournalEntry) {
         viewModelScope.launch {
             repository.deleteEntry(entry)

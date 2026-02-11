@@ -1,6 +1,7 @@
 package com.habitmind.notification
 
 import android.content.Context
+import java.util.Calendar
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -100,6 +101,7 @@ object NotificationScheduler {
     
     private const val WEEKLY_REVIEW_WORK = "weekly_review_work"
     private const val HABIT_REMINDER_WORK = "habit_reminder_work"
+    private const val MIDNIGHT_ROLLOVER_WORK = "midnight_rollover_work"
     
     // Schedule weekly review for Sunday evening
     fun scheduleWeeklyReview(context: Context) {
@@ -146,15 +148,48 @@ object NotificationScheduler {
         )
     }
     
+    // Schedule midnight task rollover
+    fun scheduleMidnightRollover(context: Context) {
+        val constraints = Constraints.Builder()
+            .setRequiresBatteryNotLow(true)
+            .build()
+        
+        // Calculate delay until next midnight
+        val now = Calendar.getInstance()
+        val midnight = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 5) // 12:05 AM to avoid edge cases
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            add(Calendar.DAY_OF_YEAR, 1) // Next midnight
+        }
+        val delayMinutes = (midnight.timeInMillis - now.timeInMillis) / (1000 * 60)
+        
+        val rolloverRequest = PeriodicWorkRequestBuilder<MidnightRolloverWorker>(
+            24, TimeUnit.HOURS
+        )
+            .setConstraints(constraints)
+            .setInitialDelay(delayMinutes, TimeUnit.MINUTES)
+            .build()
+        
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            MIDNIGHT_ROLLOVER_WORK,
+            ExistingPeriodicWorkPolicy.KEEP,
+            rolloverRequest
+        )
+    }
+    
     // Cancel all scheduled work
     fun cancelAll(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(WEEKLY_REVIEW_WORK)
         WorkManager.getInstance(context).cancelUniqueWork(HABIT_REMINDER_WORK)
+        WorkManager.getInstance(context).cancelUniqueWork(MIDNIGHT_ROLLOVER_WORK)
     }
     
     // Initialize all notifications
     fun initializeNotifications(context: Context) {
         scheduleWeeklyReview(context)
         scheduleHabitReminders(context)
+        scheduleMidnightRollover(context)
     }
 }

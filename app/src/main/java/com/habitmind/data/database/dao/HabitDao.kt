@@ -83,4 +83,18 @@ interface HabitDao {
         WHERE habitId = :habitId AND date BETWEEN :startDate AND :endDate AND isCompleted = 1
     """)
     suspend fun getCompletionCount(habitId: Long, startDate: LocalDate, endDate: LocalDate): Int
+    
+    // --- Habit Images ---
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertImage(image: HabitImage): Long
+    
+    @Query("SELECT * FROM habit_images WHERE habitId = :habitId AND date = :date ORDER BY slot ASC")
+    fun getImagesForHabitAndDate(habitId: Long, date: LocalDate): Flow<List<HabitImage>>
+    
+    @Query("SELECT * FROM habit_images WHERE habitId = :habitId ORDER BY date DESC, slot ASC")
+    fun getImagesForHabit(habitId: Long): Flow<List<HabitImage>>
+    
+    @Query("DELETE FROM habit_images WHERE id = :imageId")
+    suspend fun deleteImage(imageId: Long)
 }

@@ -16,6 +16,7 @@ import com.habitmind.data.database.entity.Goal
 import com.habitmind.data.database.entity.GoalUpdate
 import com.habitmind.data.database.entity.Habit
 import com.habitmind.data.database.entity.HabitCompletion
+import com.habitmind.data.database.entity.HabitImage
 import com.habitmind.data.database.entity.JournalEntry
 import com.habitmind.data.database.entity.Task
 
@@ -32,9 +33,10 @@ import com.habitmind.data.database.entity.Task
         DailyLog::class,
         Goal::class,
         GoalUpdate::class,
-        DailyTracker::class
+        DailyTracker::class,
+        HabitImage::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
