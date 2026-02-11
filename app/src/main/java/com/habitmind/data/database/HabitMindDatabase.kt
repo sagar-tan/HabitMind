@@ -5,11 +5,13 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.habitmind.data.database.dao.DailyTrackerDao
 import com.habitmind.data.database.dao.GoalDao
 import com.habitmind.data.database.dao.HabitDao
 import com.habitmind.data.database.dao.JournalDao
 import com.habitmind.data.database.dao.TaskDao
 import com.habitmind.data.database.entity.DailyLog
+import com.habitmind.data.database.entity.DailyTracker
 import com.habitmind.data.database.entity.Goal
 import com.habitmind.data.database.entity.GoalUpdate
 import com.habitmind.data.database.entity.Habit
@@ -29,9 +31,10 @@ import com.habitmind.data.database.entity.Task
         JournalEntry::class,
         DailyLog::class,
         Goal::class,
-        GoalUpdate::class
+        GoalUpdate::class,
+        DailyTracker::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -41,6 +44,7 @@ abstract class HabitMindDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
     abstract fun journalDao(): JournalDao
     abstract fun goalDao(): GoalDao
+    abstract fun dailyTrackerDao(): DailyTrackerDao
     
     companion object {
         @Volatile

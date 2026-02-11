@@ -55,6 +55,7 @@ import com.habitmind.ui.screens.home.HomeScreen
 import com.habitmind.ui.screens.habits.HabitsScreen
 import com.habitmind.ui.screens.insights.InsightsScreen
 import com.habitmind.ui.screens.journal.JournalScreen
+import com.habitmind.ui.screens.journal.DailyTrackerScreen
 import com.habitmind.ui.screens.plan.PlanScreen
 import com.habitmind.ui.screens.onboarding.OnboardingScreen
 import com.habitmind.ui.screens.onboarding.PrivacyConfirmScreen
@@ -337,7 +338,10 @@ fun HabitMindNavHost(
                 
                 composable(Screen.Journal.route) {
                     JournalScreen(
-                        onAddEntry = { activeDialog = ActiveDialog.ADD_JOURNAL }
+                        onAddEntry = { activeDialog = ActiveDialog.ADD_JOURNAL },
+                        onOpenDailyTracker = { date ->
+                            navController.navigate(Screen.DailyTracker.createRoute(date))
+                        }
                     )
                 }
                 
@@ -378,6 +382,31 @@ fun HabitMindNavHost(
                 // Goals
                 composable(Screen.Goals.route) {
                     GoalsScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                
+                // Daily Tracker (Notion-style)
+                composable(
+                    route = Screen.DailyTracker.route,
+                    arguments = listOf(
+                        androidx.navigation.navArgument("date") {
+                            type = androidx.navigation.NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        }
+                    )
+                ) { backStackEntry ->
+                    val date = backStackEntry.arguments?.getString("date")
+                    DailyTrackerScreen(
+                        dateString = date,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                
+                // Gantt Timeline
+                composable(Screen.GanttTimeline.route) {
+                    GanttTimelineScreen(
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }

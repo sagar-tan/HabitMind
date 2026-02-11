@@ -34,6 +34,9 @@ sealed class Screen(val route: String) {
     data object JournalEntry : Screen("journal_entry/{entryId}") {
         fun createRoute(entryId: Long?) = "journal_entry/${entryId ?: "new"}"
     }
+    data object DailyTracker : Screen("daily_tracker?date={date}") {
+        fun createRoute(date: String? = null) = if (date != null) "daily_tracker?date=$date" else "daily_tracker"
+    }
     data object GanttTimeline : Screen("gantt_timeline")
     data object WeeklyReview : Screen("weekly_review")
     data object Goals : Screen("goals")
