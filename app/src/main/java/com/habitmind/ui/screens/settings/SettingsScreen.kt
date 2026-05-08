@@ -469,7 +469,7 @@ fun SettingsToggle(
             checked = isChecked,
             onCheckedChange = onToggle,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
+                checkedThumbColor = OnAccent,
                 checkedTrackColor = Accent,
                 uncheckedThumbColor = TextMuted,
                 uncheckedTrackColor = CardBackground

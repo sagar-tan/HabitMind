@@ -276,7 +276,7 @@ fun AddHabitDialog(
                         .height(52.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Accent,
-                        contentColor = Color.White
+                        contentColor = OnAccent
                     ),
                     shape = RoundedCornerShape(12.dp),
                     enabled = habitName.isNotBlank()
