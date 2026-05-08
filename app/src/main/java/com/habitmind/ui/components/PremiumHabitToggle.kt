@@ -32,8 +32,8 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
- * A premium, interactive habit toggle with glassmorphism and haptic feedback.
- * Supports positive (achievement) and negative (avoidance) habits.
+ * A compact, premium habit toggle with a list-item style layout.
+ * Habit name on the left, interactive slider on the right.
  */
 @Composable
 fun PremiumHabitToggle(
@@ -46,17 +46,15 @@ fun PremiumHabitToggle(
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     
-    // Toggle track width and thumb width
-    val trackWidth = 140.dp
-    val thumbWidth = 70.dp
+    // Compact dimensions for list-style UI
+    val trackWidth = 100.dp
+    val thumbWidth = 50.dp
     val trackWidthPx = with(LocalDensity.current) { trackWidth.toPx() }
     val thumbWidthPx = with(LocalDensity.current) { thumbWidth.toPx() }
     val maxOffset = trackWidthPx - thumbWidthPx
     
-    // Animation state for the thumb offset
     val offset = remember { Animatable(if (isCompleted) maxOffset else 0f) }
     
-    // Synchronize offset with external isCompleted state
     LaunchedEffect(isCompleted) {
         offset.animateTo(
             targetValue = if (isCompleted) maxOffset else 0f,
@@ -64,84 +62,80 @@ fun PremiumHabitToggle(
         )
     }
 
-    // Color logic based on habit nature
-    // Positive habit: Completed (Right) = Success (Green), Not Completed (Left) = Neutral/Muted
-    // Negative habit: Completed (Right) = Failure (Red), Not Completed (Left) = Success (Green)
-    
-    val successColor = Color(0xFF4ADE80)
-    val failureColor = Color(0xFFF87171)
+    // Color logic
+    val posSuccess = Color(0xFF4ADE80)
+    val negFailure = Color(0xFFF87171)
     
     val trackColor by animateColorAsState(
         targetValue = if (isCompleted) {
-            if (isNegative) failureColor.copy(alpha = 0.15f) else successColor.copy(alpha = 0.15f)
+            if (isNegative) negFailure.copy(alpha = 0.1f) else posSuccess.copy(alpha = 0.1f)
         } else {
-            if (isNegative) successColor.copy(alpha = 0.15f) else CardBackground
+            DarkSurfaceVariant.copy(alpha = 0.5f)
         },
         label = "trackColor"
     )
     
     val thumbColor by animateColorAsState(
         targetValue = if (isCompleted) {
-            if (isNegative) failureColor else successColor
+            if (isNegative) negFailure else posSuccess
         } else {
-            if (isNegative) successColor else Accent.copy(alpha = 0.8f)
+            // Neutral state
+            Accent.copy(alpha = 0.6f)
         },
         label = "thumbColor"
     )
 
-    Column(
+    Row(
         modifier = modifier
-            .clip(RoundedCornerShape(24.dp))
-            .background(CardBackground)
-            .border(1.dp, GlassBorder, RoundedCornerShape(24.dp))
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(CardBackground.copy(alpha = 0.4f))
+            .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
+        // Habit Name
         Text(
             text = name,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = TextPrimary
+            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+            color = TextPrimary,
+            modifier = Modifier.weight(1f)
         )
         
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.width(12.dp))
         
-        // The custom toggle track
+        // Compact Slider Track
         Box(
             modifier = Modifier
                 .width(trackWidth)
-                .height(44.dp)
-                .clip(RoundedCornerShape(22.dp))
+                .height(32.dp)
+                .clip(RoundedCornerShape(16.dp))
                 .background(trackColor)
-                .border(1.dp, GlassBorder, RoundedCornerShape(22.dp))
+                .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
                 .clickable {
                     val newState = !isCompleted
                     onToggle(newState)
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 }
         ) {
-            // Labels background
+            // Background Labels
             Row(
                 modifier = Modifier.fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     Text(
-                        text = if (isNegative) "NO" else "NO",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        ),
-                        color = if (isCompleted) TextMuted else (if (isNegative) successColor else TextSecondary)
+                        text = "NO",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp),
+                        color = if (isCompleted) TextMuted else OnAccent.copy(alpha = 0.9f)
                     )
                 }
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     Text(
-                        text = if (isNegative) "YES" else "YES",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        ),
-                        color = if (isCompleted) (if (isNegative) failureColor else successColor) else TextMuted
+                        text = "YES",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp),
+                        color = if (isCompleted) OnAccent.copy(alpha = 0.9f) else TextMuted
                     )
                 }
             }
@@ -152,17 +146,14 @@ fun PremiumHabitToggle(
                     .offset { IntOffset(offset.value.roundToInt(), 0) }
                     .width(thumbWidth)
                     .fillMaxHeight()
-                    .padding(4.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                    .padding(2.dp)
+                    .clip(RoundedCornerShape(14.dp))
                     .background(
                         brush = Brush.verticalGradient(
-                            colors = listOf(
-                                thumbColor,
-                                thumbColor.copy(alpha = 0.8f)
-                            )
+                            colors = listOf(thumbColor, thumbColor.copy(alpha = 0.9f))
                         )
                     )
-                    .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(18.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(14.dp))
                     .draggable(
                         orientation = Orientation.Horizontal,
                         state = rememberDraggableState { delta ->
@@ -177,15 +168,19 @@ fun PremiumHabitToggle(
                                 onToggle(targetState)
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             } else {
-                                // Snap back
-                                offset.animateTo(
-                                    if (isCompleted) maxOffset else 0f,
-                                    spring(Spring.DampingRatioMediumBouncy)
-                                )
+                                offset.animateTo(if (isCompleted) maxOffset else 0f, spring(Spring.DampingRatioMediumBouncy))
                             }
                         }
-                    )
-            )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                // Label inside thumb for high contrast
+                Text(
+                    text = if (offset.value > maxOffset / 2) "YES" else "NO",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+                    color = OnAccent
+                )
+            }
         }
     }
 }
