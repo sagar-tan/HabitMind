@@ -1,7 +1,6 @@
 package com.habitmind.ui.theme
 
 import android.app.Activity
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
@@ -11,29 +10,29 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    // Primary - Accent color
+    // Primary - Accent color (Electric Indigo)
     primary = Accent,
     onPrimary = OnAccent,
     primaryContainer = AccentContainer,
-    onPrimaryContainer = DarkOnBackground,
+    onPrimaryContainer = TextPrimary,
     
-    // Secondary - same as primary for single accent
+    // Secondary - variant for depth
     secondary = AccentVariant,
     onSecondary = OnAccent,
     secondaryContainer = AccentContainer,
-    onSecondaryContainer = DarkOnBackground,
+    onSecondaryContainer = TextPrimary,
     
-    // Background
+    // Background - Charcoal
     background = DarkBackground,
-    onBackground = DarkOnBackground,
+    onBackground = TextPrimary,
     
     // Surface
     surface = DarkSurface,
-    onSurface = DarkOnSurface,
+    onSurface = TextPrimary,
     surfaceVariant = DarkSurfaceVariant,
-    onSurfaceVariant = DarkOnSurfaceVariant,
+    onSurfaceVariant = TextSecondary,
     
-    // Error - neutral, not aggressive red
+    // Error - Premium Coral
     error = Error,
     onError = DarkBackground,
     
