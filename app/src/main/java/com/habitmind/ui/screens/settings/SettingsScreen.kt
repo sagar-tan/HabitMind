@@ -73,6 +73,7 @@ import com.habitmind.ui.theme.DarkBackground
 import com.habitmind.ui.theme.GlassBorder
 import com.habitmind.ui.theme.GlassSurface
 import com.habitmind.ui.theme.Motion
+import com.habitmind.ui.theme.OnAccent
 import com.habitmind.ui.theme.Spacing
 import com.habitmind.ui.theme.Success
 import com.habitmind.ui.theme.TextMuted
