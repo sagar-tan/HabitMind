@@ -100,7 +100,7 @@ fun HabitMindNavHost(
     
     // Track if we should show main UI elements
     val showBottomBar = currentRoute in glassNavItems.map { it.route }
-    val showFAB = currentRoute in listOf("plan", "habits", "journal")
+    val showFAB = currentRoute in listOf(Screen.Journal.route, Screen.Domains.route, "plan", "habits")
     
     // State for dialogs
     var activeDialog by remember { mutableStateOf(ActiveDialog.NONE) }
@@ -350,10 +350,12 @@ fun HabitMindNavHost(
                 }
 
                 composable(Screen.Domains.route) {
-                    // Placeholder for Domains Screen
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Domains Screen coming soon", color = TextSecondary)
-                    }
+                    HabitsScreen(
+                        onAddHabit = { activeDialog = ActiveDialog.ADD_HABIT },
+                        onHabitClick = { habitId ->
+                            navController.navigate(Screen.HabitDetail.createRoute(habitId))
+                        }
+                    )
                 }
                 
                 composable(Screen.Analytics.route) {
@@ -453,6 +455,8 @@ fun HabitMindNavHost(
             FloatingGlassFAB(
                 onClick = {
                     activeDialog = when (currentRoute) {
+                        Screen.Domains.route -> ActiveDialog.ADD_HABIT
+                        Screen.Journal.route -> ActiveDialog.ADD_JOURNAL
                         "plan" -> ActiveDialog.ADD_TASK
                         "habits" -> ActiveDialog.ADD_HABIT
                         "journal" -> ActiveDialog.ADD_JOURNAL
