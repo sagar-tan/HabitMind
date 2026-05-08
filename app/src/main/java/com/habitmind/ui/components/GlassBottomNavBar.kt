@@ -8,27 +8,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.outlined.Book
-import androidx.compose.material.icons.outlined.CalendarToday
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -44,11 +28,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.habitmind.ui.theme.GlassBorder
-import com.habitmind.ui.theme.GlassSurface
-import com.habitmind.ui.theme.Motion
-import com.habitmind.ui.theme.TextMuted
-import com.habitmind.ui.theme.TextPrimary
+import androidx.compose.ui.unit.sp
+import com.habitmind.ui.theme.*
 
 data class GlassNavItem(
     val route: String,
@@ -59,15 +40,15 @@ data class GlassNavItem(
 
 val glassNavItems = listOf(
     GlassNavItem("home", "Home", Icons.Filled.Home, Icons.Outlined.Home),
-    GlassNavItem("plan", "Plan", Icons.Filled.CalendarToday, Icons.Outlined.CalendarToday),
-    GlassNavItem("habits", "Habits", Icons.Filled.CheckCircle, Icons.Outlined.CheckCircle),
-    GlassNavItem("journal", "Journal", Icons.Filled.Book, Icons.Outlined.Book),
-    GlassNavItem("insights", "Insights", Icons.Filled.BarChart, Icons.Outlined.BarChart)
+    GlassNavItem("journal", "Journal", Icons.Filled.MenuBook, Icons.Outlined.MenuBook),
+    GlassNavItem("domains", "Domains", Icons.Filled.GridView, Icons.Outlined.GridView),
+    GlassNavItem("analytics", "Analytics", Icons.Filled.Insights, Icons.Outlined.Insights),
+    GlassNavItem("reviews", "Reviews", Icons.Filled.History, Icons.Outlined.History)
 )
 
 /**
  * Glassmorphic floating island bottom navigation bar
- * All 5 icons evenly spaced - no FAB in navbar
+ * Properly aligned with 5 evenly spaced items.
  */
 @Composable
 fun GlassBottomNavBar(
@@ -78,26 +59,26 @@ fun GlassBottomNavBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .padding(horizontal = 16.dp, vertical = 20.dp) // Adjusted outer padding
             .navigationBarsPadding()
     ) {
         // Glass container
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(68.dp)
+                .height(72.dp) // Slightly taller for better label spacing
                 .shadow(
-                    elevation = 16.dp,
-                    shape = RoundedCornerShape(24.dp),
-                    ambientColor = Color.Black.copy(alpha = 0.25f),
-                    spotColor = Color.Black.copy(alpha = 0.25f)
+                    elevation = 20.dp,
+                    shape = RoundedCornerShape(28.dp),
+                    ambientColor = Color.Black.copy(alpha = 0.3f),
+                    spotColor = Color.Black.copy(alpha = 0.3f)
                 )
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(28.dp))
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            GlassSurface.copy(alpha = 0.92f),
-                            GlassSurface.copy(alpha = 0.88f)
+                            GlassSurface.copy(alpha = 0.95f),
+                            GlassSurface.copy(alpha = 0.90f)
                         )
                     )
                 )
@@ -109,14 +90,12 @@ fun GlassBottomNavBar(
                             Color.Transparent
                         )
                     ),
-                    shape = RoundedCornerShape(24.dp)
+                    shape = RoundedCornerShape(28.dp)
                 )
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.Center, // Each item will use weight(1f) to space evenly
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 glassNavItems.forEach { item ->
@@ -144,42 +123,47 @@ fun GlassNavItemButton(
     
     val scale by animateFloatAsState(
         targetValue = when {
-            isPressed -> 0.9f
+            isPressed -> 0.92f
             selected -> 1.05f
             else -> 1f
         },
-        animationSpec = tween(Motion.MICRO, easing = FastOutSlowInEasing),
+        animationSpec = tween(150, easing = FastOutSlowInEasing),
         label = "navScale"
     )
     
     val iconAlpha by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.5f,
-        animationSpec = tween(Motion.MICRO),
+        targetValue = if (selected) 1f else 0.45f,
+        animationSpec = tween(150),
         label = "iconAlpha"
     )
     
     Column(
         modifier = modifier
+            .fillMaxHeight()
             .scale(scale)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
-            )
-            .padding(vertical = 4.dp),
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        verticalArrangement = Arrangement.Center
     ) {
         Icon(
             imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
             contentDescription = item.label,
-            modifier = Modifier.size(22.dp),
-            tint = TextPrimary.copy(alpha = iconAlpha)
+            modifier = Modifier.size(24.dp), // Consistent icon size
+            tint = if (selected) Accent else TextPrimary.copy(alpha = iconAlpha)
         )
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = item.label,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (selected) TextPrimary else TextMuted
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 10.sp,
+                letterSpacing = 0.2.sp
+            ),
+            color = if (selected) Accent else TextMuted,
+            maxLines = 1
         )
     }
 }

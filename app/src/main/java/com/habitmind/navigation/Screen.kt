@@ -17,11 +17,16 @@ sealed class Screen(val route: String) {
     data object ProfileSetup : Screen("profile_setup")
     data object Walkthrough : Screen("walkthrough")
     
-    // Main tabs
+    // Main tabs (Journal-First Architecture)
     data object Home : Screen("home")
+    data object Journal : Screen("journal")
+    data object Domains : Screen("domains")
+    data object Analytics : Screen("analytics")
+    data object Reviews : Screen("reviews")
+    
+    // Internal/Secondary screens (Legacy or repurposed)
     data object Plan : Screen("plan")
     data object Habits : Screen("habits")
-    data object Journal : Screen("journal")
     data object Insights : Screen("insights")
     
     // Detail screens
@@ -34,8 +39,8 @@ sealed class Screen(val route: String) {
     data object JournalEntry : Screen("journal_entry/{entryId}") {
         fun createRoute(entryId: Long?) = "journal_entry/${entryId ?: "new"}"
     }
-    data object DailyTracker : Screen("daily_tracker?date={date}") {
-        fun createRoute(date: String? = null) = if (date != null) "daily_tracker?date=$date" else "daily_tracker"
+    data object DailyJournal : Screen("daily_journal?date={date}") {
+        fun createRoute(date: String? = null) = if (date != null) "daily_journal?date=$date" else "daily_journal"
     }
     data object GanttTimeline : Screen("gantt_timeline")
     data object WeeklyReview : Screen("weekly_review")
@@ -44,18 +49,18 @@ sealed class Screen(val route: String) {
 }
 
 /**
- * Bottom navigation items
+ * Bottom navigation items - strictly follows the new ritual-first model
  */
 enum class BottomNavItem(
     val screen: Screen,
     val label: String,
-    val iconName: String // Using string for now, will map to actual icons
+    val iconName: String
 ) {
     HOME(Screen.Home, "Home", "home"),
-    PLAN(Screen.Plan, "Plan", "calendar"),
-    HABITS(Screen.Habits, "Habits", "check_circle"),
-    JOURNAL(Screen.Journal, "Journal", "book"),
-    INSIGHTS(Screen.Insights, "Insights", "bar_chart")
+    JOURNAL(Screen.Journal, "Journal", "menu_book"),
+    DOMAINS(Screen.Domains, "Domains", "grid_view"),
+    ANALYTICS(Screen.Analytics, "Analytics", "insights"),
+    REVIEWS(Screen.Reviews, "Reviews", "history")
 }
 
 @Composable

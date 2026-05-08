@@ -18,7 +18,8 @@ data class Habit(
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val isArchived: Boolean = false,
     val reminderTime: String? = null, // HH:mm format
-    val color: String = "#E8E8EC" // Accent color hex
+    val color: String = "#E8E8EC", // Accent color hex
+    val isNegative: Boolean = false // If true, completion is "avoidance" (bad thing avoided)
 )
 
 /**

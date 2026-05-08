@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habitmind.HabitMindApplication
+import com.habitmind.data.database.entity.DailyJournal
 import com.habitmind.data.database.entity.JournalEntry
 import com.habitmind.data.database.entity.Task
 import com.habitmind.data.repository.HabitWithStreak
@@ -22,6 +23,7 @@ data class HomeUiState(
     val habits: List<HabitWithStreak> = emptyList(),
     val todayTasks: List<Task> = emptyList(),
     val recentJournalEntries: List<JournalEntry> = emptyList(),
+    val todayJournal: DailyJournal? = null,
     val isLoading: Boolean = true
 )
 
@@ -31,6 +33,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val habitRepository = app.habitRepository
     private val taskRepository = app.taskRepository
     private val journalRepository = app.journalRepository
+    private val dailyJournalRepository = app.dailyJournalRepository
     private val preferences = app.userPreferences
     
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -76,6 +79,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             journalRepository.getRecentEntries(3).collect { entries ->
                 _uiState.value = _uiState.value.copy(recentJournalEntries = entries)
+            }
+        }
+
+        // Load today's journal status
+        viewModelScope.launch {
+            dailyJournalRepository.getJournalFlowByDate(LocalDate.now()).collect { journal ->
+                _uiState.value = _uiState.value.copy(todayJournal = journal)
             }
         }
     }

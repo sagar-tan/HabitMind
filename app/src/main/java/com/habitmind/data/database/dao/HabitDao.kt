@@ -8,6 +8,7 @@ import androidx.room.Query
 import androidx.room.Update
 import com.habitmind.data.database.entity.Habit
 import com.habitmind.data.database.entity.HabitCompletion
+import com.habitmind.data.database.entity.HabitImage
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 

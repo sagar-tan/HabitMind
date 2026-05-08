@@ -45,18 +45,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.habitmind.ui.components.PremiumHabitToggle
 import com.habitmind.ui.components.fadeScaleIn
 import com.habitmind.ui.components.staggeredEntrance
-import com.habitmind.ui.theme.Accent
-import com.habitmind.ui.theme.CardBackground
-import com.habitmind.ui.theme.DarkBackground
-import com.habitmind.ui.theme.GlassBorder
-import com.habitmind.ui.theme.ProgressActive
-import com.habitmind.ui.theme.ProgressTrack
-import com.habitmind.ui.theme.Spacing
-import com.habitmind.ui.theme.TextMuted
-import com.habitmind.ui.theme.TextPrimary
-import com.habitmind.ui.theme.TextSecondary
+import com.habitmind.ui.theme.*
 import com.habitmind.ui.viewmodel.HomeViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -133,13 +125,12 @@ fun HomeScreen(
             MoodIndicator(modifier = Modifier.fadeScaleIn())
         }
         
-        // Today Summary Card with staggered animation
+        // Journal Status Card
         item {
-            TodaySummaryCard(
-                habitsCompleted = uiState.habitsCompleted,
-                totalHabits = uiState.totalHabits,
-                taskProgress = uiState.taskProgress.toInt(),
-                modifier = Modifier.staggeredEntrance(0)
+            JournalStatusCard(
+                journal = uiState.todayJournal,
+                modifier = Modifier.staggeredEntrance(0),
+                onContinueJournal = onNavigateToJournal
             )
         }
         
@@ -158,15 +149,9 @@ fun HomeScreen(
                 ) {
                     QuickActionButton(
                         icon = Icons.Outlined.Book,
-                        label = "Journal",
+                        label = "Daily Journal",
                         modifier = Modifier.weight(1f),
                         onClick = onNavigateToJournal
-                    )
-                    QuickActionButton(
-                        icon = Icons.AutoMirrored.Outlined.ListAlt,
-                        label = "Add Task",
-                        modifier = Modifier.weight(1f),
-                        onClick = onNavigateToPlan
                     )
                     QuickActionButton(
                         icon = Icons.Outlined.Note,
@@ -174,11 +159,17 @@ fun HomeScreen(
                         modifier = Modifier.weight(1f),
                         onClick = onShowQuickNote
                     )
+                    QuickActionButton(
+                        icon = Icons.AutoMirrored.Outlined.ListAlt,
+                        label = "Tasks",
+                        modifier = Modifier.weight(1f),
+                        onClick = onNavigateToPlan
+                    )
                 }
             }
         }
         
-        // Habits preview
+        // Habits preview (Premium Confirmation)
         if (uiState.habits.isNotEmpty()) {
             item {
                 Column(modifier = Modifier.staggeredEntrance(2)) {
@@ -189,40 +180,15 @@ fun HomeScreen(
                     )
                     Spacer(modifier = Modifier.height(Spacing.sm))
                     
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
-                    ) {
-                        uiState.habits.take(4).forEach { habitWithStreak ->
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(
-                                        if (habitWithStreak.isCompletedToday) 
-                                            Accent.copy(alpha = 0.2f) 
-                                        else 
-                                            CardBackground
-                                    )
-                                    .border(
-                                        width = 1.dp,
-                                        color = if (habitWithStreak.isCompletedToday) 
-                                            Accent.copy(alpha = 0.3f) 
-                                        else 
-                                            GlassBorder,
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .clickable { viewModel.toggleHabitCompletion(habitWithStreak.habit.id) }
-                                    .padding(Spacing.md),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = habitWithStreak.habit.name.take(8),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (habitWithStreak.isCompletedToday) Accent else TextSecondary,
-                                    maxLines = 1
-                                )
-                            }
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                        uiState.habits.forEach { habitWithStreak ->
+                            PremiumHabitToggle(
+                                name = habitWithStreak.habit.name,
+                                isCompleted = habitWithStreak.isCompletedToday,
+                                isNegative = habitWithStreak.habit.isNegative,
+                                onToggle = { viewModel.toggleHabitCompletion(habitWithStreak.habit.id) },
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
                 }
@@ -236,12 +202,14 @@ fun HomeScreen(
 }
 
 @Composable
-fun TodaySummaryCard(
-    habitsCompleted: Int,
-    totalHabits: Int,
-    taskProgress: Int,
-    modifier: Modifier = Modifier
+fun JournalStatusCard(
+    journal: com.habitmind.data.database.entity.DailyJournal?,
+    modifier: Modifier = Modifier,
+    onContinueJournal: () -> Unit = {}
 ) {
+    val isStarted = journal != null
+    val isComplete = journal?.isComplete ?: false
+    
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -256,45 +224,98 @@ fun TodaySummaryCard(
             )
             .border(
                 width = 1.dp,
-                color = GlassBorder,
+                color = if (isComplete) Accent.copy(alpha = 0.5f) else GlassBorder,
                 shape = RoundedCornerShape(16.dp)
             )
+            .clickable(onClick = onContinueJournal)
             .padding(Spacing.lg)
     ) {
-        Text(
-            text = "Today's Progress",
-            style = MaterialTheme.typography.titleMedium,
-            color = TextPrimary
-        )
-        
-        Spacer(modifier = Modifier.height(Spacing.lg))
-        
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            StatItem(
-                value = "$habitsCompleted/$totalHabits",
-                label = "Habits"
+            Text(
+                text = "Today's Journal",
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary
             )
-            StatItem(
-                value = "$taskProgress%",
-                label = "Tasks"
-            )
+            
+            if (isComplete) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Accent.copy(alpha = 0.2f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "COMPLETE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Accent
+                    )
+                }
+            }
         }
+        
+        Spacer(modifier = Modifier.height(Spacing.md))
+        
+        Text(
+            text = when {
+                isComplete -> "You've captured your day. Reflection complete."
+                isStarted -> "You've started your journal. Keep going!"
+                else -> "Take a moment to reflect on your day."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary
+        )
         
         Spacer(modifier = Modifier.height(Spacing.lg))
         
-        // Progress bar - monochrome
-        LinearProgressIndicator(
-            progress = { taskProgress / 100f },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(RoundedCornerShape(3.dp)),
-            color = ProgressActive,
-            trackColor = ProgressTrack
-        )
+        // CTAs
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isComplete) CardBackground else Accent)
+                    .border(
+                        width = 1.dp,
+                        color = if (isComplete) GlassBorder else Accent,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .clickable(onClick = onContinueJournal)
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (isStarted) "Continue" else "Start Journal",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (isComplete) TextPrimary else DarkBackground
+                )
+            }
+            
+            if (!isComplete) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(CardBackground)
+                        .border(1.dp, GlassBorder, RoundedCornerShape(12.dp))
+                        .clickable(onClick = onContinueJournal) // For now, same nav
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Minimum Mode",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = TextPrimary
+                    )
+                }
+            }
+        }
     }
 }
 

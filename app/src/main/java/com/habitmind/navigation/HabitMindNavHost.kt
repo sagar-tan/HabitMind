@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -55,7 +56,7 @@ import com.habitmind.ui.screens.home.HomeScreen
 import com.habitmind.ui.screens.habits.HabitsScreen
 import com.habitmind.ui.screens.insights.InsightsScreen
 import com.habitmind.ui.screens.journal.JournalScreen
-import com.habitmind.ui.screens.journal.DailyTrackerScreen
+import com.habitmind.ui.screens.journal.DailyJournalScreen
 import com.habitmind.ui.screens.plan.PlanScreen
 import com.habitmind.ui.screens.onboarding.OnboardingScreen
 import com.habitmind.ui.screens.onboarding.PrivacyConfirmScreen
@@ -68,6 +69,7 @@ import com.habitmind.ui.screens.goals.GoalsScreen
 import com.habitmind.ui.screens.gantt.GanttTimelineScreen
 import com.habitmind.ui.screens.settings.SettingsScreen
 import com.habitmind.ui.theme.DarkBackground
+import com.habitmind.ui.theme.TextSecondary
 import com.habitmind.ui.theme.Motion
 import kotlinx.coroutines.launch
 import java.io.File
@@ -315,7 +317,9 @@ fun HabitMindNavHost(
                     HomeScreen(
                         userName = userName,
                         onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                        onNavigateToJournal = { navController.navigate(Screen.Journal.route) },
+                        onNavigateToJournal = { 
+                            navController.navigate(Screen.DailyJournal.createRoute(LocalDate.now().toString()))
+                        },
                         onNavigateToPlan = { navController.navigate(Screen.Plan.route) },
                         onShowQuickNote = { activeDialog = ActiveDialog.QUICK_NOTE }
                     )
@@ -340,13 +344,26 @@ fun HabitMindNavHost(
                     JournalScreen(
                         onAddEntry = { activeDialog = ActiveDialog.ADD_JOURNAL },
                         onOpenDailyTracker = { date ->
-                            navController.navigate(Screen.DailyTracker.createRoute(date))
+                            navController.navigate(Screen.DailyJournal.createRoute(date))
                         }
                     )
                 }
+
+                composable(Screen.Domains.route) {
+                    // Placeholder for Domains Screen
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Domains Screen coming soon", color = TextSecondary)
+                    }
+                }
                 
-                composable(Screen.Insights.route) {
+                composable(Screen.Analytics.route) {
                     InsightsScreen()
+                }
+
+                composable(Screen.Reviews.route) {
+                    WeeklyReviewScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
                 }
                 
                 // Settings
@@ -386,9 +403,9 @@ fun HabitMindNavHost(
                     )
                 }
                 
-                // Daily Tracker (Notion-style)
+                // Daily Journal (Repositioned from Tracker)
                 composable(
-                    route = Screen.DailyTracker.route,
+                    route = Screen.DailyJournal.route,
                     arguments = listOf(
                         androidx.navigation.navArgument("date") {
                             type = androidx.navigation.NavType.StringType
@@ -398,7 +415,7 @@ fun HabitMindNavHost(
                     )
                 ) { backStackEntry ->
                     val date = backStackEntry.arguments?.getString("date")
-                    DailyTrackerScreen(
+                    DailyJournalScreen(
                         dateString = date,
                         onNavigateBack = { navController.popBackStack() }
                     )
@@ -454,13 +471,14 @@ fun HabitMindNavHost(
             ActiveDialog.ADD_HABIT -> {
                 AddHabitDialog(
                     onDismiss = { activeDialog = ActiveDialog.NONE },
-                    onConfirm = { name, color, reminderTime ->
+                    onConfirm = { name, color, reminderTime, isNegative ->
                         scope.launch {
                             try {
                                 val habit = Habit(
                                     name = name,
                                     color = color,
-                                    reminderTime = reminderTime
+                                    reminderTime = reminderTime,
+                                    isNegative = isNegative
                                 )
                                 habitRepository.insertHabit(habit)
                                 Toast.makeText(context, "Habit added!", Toast.LENGTH_SHORT).show()

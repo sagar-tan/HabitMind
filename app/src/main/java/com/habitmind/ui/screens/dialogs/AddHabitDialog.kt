@@ -76,11 +76,12 @@ val habitColors = listOf(
 @Composable
 fun AddHabitDialog(
     onDismiss: () -> Unit,
-    onConfirm: (name: String, color: String, reminderTime: String?) -> Unit
+    onConfirm: (name: String, color: String, reminderTime: String?, isNegative: Boolean) -> Unit
 ) {
     var isVisible by remember { mutableStateOf(false) }
     var habitName by remember { mutableStateOf("") }
     var selectedColorIndex by remember { mutableStateOf(0) }
+    var isNegative by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     
     LaunchedEffect(Unit) {
@@ -189,6 +190,51 @@ fun AddHabitDialog(
                 
                 Spacer(modifier = Modifier.height(Spacing.lg))
                 
+                // Habit Type (Positive/Negative)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(CardBackground)
+                        .border(1.dp, GlassBorder, RoundedCornerShape(12.dp))
+                        .clickable { isNegative = !isNegative }
+                        .padding(Spacing.md),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = if (isNegative) "Negative Habit" else "Positive Habit",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = if (isNegative) "Goal is avoidance" else "Goal is completion",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextMuted
+                        )
+                    }
+                    
+                    // Simple custom toggle
+                    Box(
+                        modifier = Modifier
+                            .size(width = 48.dp, height = 24.dp)
+                            .clip(CircleShape)
+                            .background(if (isNegative) Color(0xFFF87171).copy(alpha = 0.3f) else Color(0xFF4ADE80).copy(alpha = 0.3f))
+                            .padding(2.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .align(if (isNegative) Alignment.CenterEnd else Alignment.CenterStart)
+                                .clip(CircleShape)
+                                .background(if (isNegative) Color(0xFFF87171) else Color(0xFF4ADE80))
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(Spacing.lg))
+                
                 // Color picker
                 Text(
                     text = "Color",
@@ -222,7 +268,7 @@ fun AddHabitDialog(
                     onClick = {
                         if (habitName.isNotBlank()) {
                             val colorHex = habitColors[selectedColorIndex].second
-                            onConfirm(habitName.trim(), colorHex, null)
+                            onConfirm(habitName.trim(), colorHex, null, isNegative)
                         }
                     },
                     modifier = Modifier

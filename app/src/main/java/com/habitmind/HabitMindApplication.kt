@@ -3,6 +3,7 @@ package com.habitmind
 import android.app.Application
 import com.habitmind.data.database.HabitMindDatabase
 import com.habitmind.data.datastore.UserPreferencesDataStore
+import com.habitmind.data.repository.DailyJournalRepository
 import com.habitmind.data.repository.DailyTrackerRepository
 import com.habitmind.data.repository.GoalRepository
 import com.habitmind.data.repository.HabitRepository
@@ -29,6 +30,7 @@ class HabitMindApplication : Application() {
     val journalRepository: JournalRepository by lazy { JournalRepository(database.journalDao()) }
     val goalRepository: GoalRepository by lazy { GoalRepository(database.goalDao()) }
     val dailyTrackerRepository: DailyTrackerRepository by lazy { DailyTrackerRepository(database.dailyTrackerDao()) }
+    val dailyJournalRepository: DailyJournalRepository by lazy { DailyJournalRepository(database.dailyJournalDao()) }
     
     override fun onCreate() {
         super.onCreate()
