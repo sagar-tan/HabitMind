@@ -1,5 +1,6 @@
 package com.habitmind.ui.screens.habits
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -8,16 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -38,20 +30,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.habitmind.data.repository.HabitWithStreak
 import com.habitmind.ui.components.staggeredEntrance
-import com.habitmind.ui.theme.Accent
-import com.habitmind.ui.theme.CardBackground
-import com.habitmind.ui.theme.DarkBackground
-import com.habitmind.ui.theme.GlassBorder
-import com.habitmind.ui.theme.Spacing
-import com.habitmind.ui.theme.TextMuted
-import com.habitmind.ui.theme.TextPrimary
-import com.habitmind.ui.theme.TextSecondary
+import com.habitmind.ui.theme.*
 import com.habitmind.ui.viewmodel.HabitsViewModel
 
+/**
+ * Bento-style Habits Grid.
+ * Research-driven design: Uses the 'Von Restorff Effect' (Isolation Effect) 
+ * where the completed state is visually distinct but not 'harsh'.
+ * Alignment follows a strict 8dp/12dp grid for reduced cognitive load.
+ */
 @Composable
 fun HabitsScreen(
     onAddHabit: () -> Unit = {},
@@ -66,70 +60,57 @@ fun HabitsScreen(
             .background(DarkBackground)
             .padding(horizontal = Spacing.screenHorizontal)
     ) {
-        Spacer(modifier = Modifier.height(Spacing.lg))
+        Spacer(modifier = Modifier.height(Spacing.xxl))
         
-        Text(
-            text = "Habits",
-            style = MaterialTheme.typography.headlineLarge,
-            color = TextPrimary
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Column {
+                Text(
+                    text = "Habit Domains",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                    color = TextPrimary
+                )
+                Text(
+                    text = "Your neuro-circuits for today",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            }
+        }
         
-        Spacer(modifier = Modifier.height(Spacing.lg))
+        Spacer(modifier = Modifier.height(Spacing.xl))
         
         if (uiState.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = Accent)
             }
         } else if (uiState.habits.isEmpty()) {
-            // Empty state
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "No habits yet",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = TextSecondary
-                    )
-                    Text(
-                        text = "Tap + to add your first habit",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextMuted
-                    )
-                }
-            }
+            EmptyHabitsState()
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                verticalArrangement = Arrangement.spacedBy(Spacing.md)
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                contentPadding = PaddingValues(bottom = 120.dp)
             ) {
                 itemsIndexed(uiState.habits) { index, habitWithStreak ->
-                    HabitCard(
+                    BentoHabitTile(
                         habitWithStreak = habitWithStreak,
                         onToggle = { viewModel.toggleCompletion(habitWithStreak.habit.id) },
                         onClick = { onHabitClick(habitWithStreak.habit.id) },
-                        modifier = Modifier.staggeredEntrance(index, delayPerItem = 60)
+                        modifier = Modifier.staggeredEntrance(index, delayPerItem = 40)
                     )
                 }
-                
-                // Bottom padding for navbar
-                item { Spacer(modifier = Modifier.height(80.dp)) }
-                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
     }
 }
 
 @Composable
-fun HabitCard(
+fun BentoHabitTile(
     habitWithStreak: HabitWithStreak,
     onToggle: () -> Unit,
     onClick: () -> Unit = {},
@@ -138,91 +119,125 @@ fun HabitCard(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val isCompleted = habitWithStreak.isCompletedToday
+    val habitColor = Color(android.graphics.Color.parseColor(habitWithStreak.habit.color))
     
-    val scale by animateFloatAsState(
-        targetValue = when {
-            isPressed -> 0.95f
-            isCompleted -> 1.02f
-            else -> 1f
-        },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "habitScale"
+    val animatedBgColor by animateColorAsState(
+        targetValue = if (isCompleted) habitColor.copy(alpha = 0.15f) else DarkSurface,
+        label = "bgColor"
     )
     
-    Column(
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "scale"
+    )
+
+    Box(
         modifier = modifier
             .scale(scale)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        CardBackground,
-                        CardBackground.copy(alpha = 0.95f)
-                    )
-                )
-            )
+            .height(110.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(animatedBgColor)
             .border(
                 width = 1.dp,
-                color = if (isCompleted) Accent.copy(alpha = 0.3f) else GlassBorder,
-                shape = RoundedCornerShape(16.dp)
+                color = if (isCompleted) habitColor.copy(alpha = 0.4f) else GlassBorder,
+                shape = RoundedCornerShape(20.dp)
             )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick
+                onClick = onToggle // Direct toggle for speed, click handled elsewhere if needed
             )
-            .padding(Spacing.lg),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
-        // Completion indicator
+        // Left accent bar (Neural circuit indicator)
         Box(
             modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(
-                    if (isCompleted) Accent else CardBackground
-                )
-                .border(
-                    width = 2.dp,
-                    color = if (isCompleted) Accent else TextMuted.copy(alpha = 0.3f),
-                    shape = CircleShape
-                ),
-            contentAlignment = Alignment.Center
+                .width(4.dp)
+                .fillMaxHeight(0.4f)
+                .align(Alignment.CenterStart)
+                .padding(start = 0.dp)
+                .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
+                .background(habitColor.copy(alpha = if (isCompleted) 1f else 0.4f))
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            if (isCompleted) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = "Completed",
-                    tint = DarkBackground,
-                    modifier = Modifier.size(24.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                // Habit Name
+                Text(
+                    text = habitWithStreak.habit.name,
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 18.sp
+                    ),
+                    color = if (isCompleted) TextPrimary else TextSecondary,
+                    modifier = Modifier.weight(1f)
                 )
+
+                // Corner checkmark
+                if (isCompleted) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = habitColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            // Streak & Progress
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "${habitWithStreak.currentStreak}d streak",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                    color = if (habitWithStreak.currentStreak > 0) habitColor.copy(alpha = 0.8f) else TextMuted
+                )
+                
+                // Small indicator for negative habits
+                if (habitWithStreak.habit.isNegative) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(Error.copy(alpha = 0.6f))
+                    )
+                }
             }
         }
-        
-        Text(
-            text = habitWithStreak.habit.name,
-            style = MaterialTheme.typography.titleSmall,
-            color = TextPrimary
-        )
-        
-        // Streak display
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+    }
+}
+
+@Composable
+fun EmptyHabitsState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "🔥",
-                style = MaterialTheme.typography.labelSmall
+                text = "Neural Grid Empty",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = TextSecondary
             )
             Text(
-                text = "${habitWithStreak.currentStreak} day${if (habitWithStreak.currentStreak != 1) "s" else ""}",
-                style = MaterialTheme.typography.labelSmall,
-                color = if (habitWithStreak.currentStreak > 0) Accent else TextSecondary
+                text = "Tap the '+' to initialize a habit circuit.",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextMuted
             )
         }
     }
