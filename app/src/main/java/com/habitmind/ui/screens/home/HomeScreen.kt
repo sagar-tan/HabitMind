@@ -22,29 +22,33 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ListAlt
-import androidx.compose.material.icons.outlined.Book
-import androidx.compose.material.icons.outlined.Note
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.Psychology
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.habitmind.data.database.entity.DailyJournal
+import com.habitmind.data.database.entity.TomorrowPriority
 import com.habitmind.ui.components.PremiumHabitToggle
 import com.habitmind.ui.components.fadeScaleIn
 import com.habitmind.ui.components.staggeredEntrance
@@ -67,143 +71,158 @@ fun HomeScreen(
     val dayName = today.format(DateTimeFormatter.ofPattern("EEEE"))
     val dateFormatted = today.format(DateTimeFormatter.ofPattern("MMM d"))
     
-    // Use viewModel userName if available, otherwise use parameter
     val displayName = uiState.userName ?: userName
     
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DarkBackground)
-            .padding(horizontal = Spacing.screenHorizontal),
-        verticalArrangement = Arrangement.spacedBy(Spacing.lg)
-    ) {
-        // Greeting header with fade-scale animation
-        item {
-            Spacer(modifier = Modifier.height(Spacing.lg))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fadeScaleIn(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    // Personalized greeting
-                    Text(
-                        text = if (!displayName.isNullOrBlank()) "Hello, $displayName" else dayName,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (!displayName.isNullOrBlank()) Accent else TextSecondary
-                    )
-                    Text(
-                        text = if (!displayName.isNullOrBlank()) dayName else dateFormatted,
-                        style = if (!displayName.isNullOrBlank()) 
-                            MaterialTheme.typography.titleLarge 
-                        else 
-                            MaterialTheme.typography.headlineLarge,
-                        color = TextPrimary
-                    )
-                    if (!displayName.isNullOrBlank()) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(DarkBackground)
+                .padding(horizontal = Spacing.screenHorizontal),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg)
+        ) {
+            item {
+                Spacer(modifier = Modifier.height(Spacing.lg))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fadeScaleIn(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
                         Text(
-                            text = dateFormatted,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
+                            text = if (!displayName.isNullOrBlank()) "Hello, $displayName" else dayName,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (!displayName.isNullOrBlank()) Accent else TextSecondary
+                        )
+                        Text(
+                            text = if (!displayName.isNullOrBlank()) dayName else dateFormatted,
+                            style = if (!displayName.isNullOrBlank()) 
+                                MaterialTheme.typography.titleLarge 
+                            else 
+                                MaterialTheme.typography.headlineLarge,
+                            color = TextPrimary
+                        )
+                        if (!displayName.isNullOrBlank()) {
+                            Text(
+                                text = dateFormatted,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = "Settings",
+                            tint = TextSecondary
                         )
                     }
                 }
-                IconButton(onClick = onNavigateToSettings) {
-                    Icon(
-                        imageVector = Icons.Outlined.Settings,
-                        contentDescription = "Settings",
-                        tint = TextSecondary
-                    )
-                }
             }
-        }
-        
-        // Mood indicator
-        item {
-            MoodIndicator(modifier = Modifier.fadeScaleIn())
-        }
-        
-        // Journal Status Card
-        item {
-            JournalStatusCard(
-                journal = uiState.todayJournal,
-                modifier = Modifier.staggeredEntrance(0),
-                onContinueJournal = onNavigateToJournal
-            )
-        }
-        
-        // Quick Actions
-        item {
-            Column(modifier = Modifier.staggeredEntrance(1)) {
-                Text(
-                    text = "Quick Actions",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary
-                )
-                Spacer(modifier = Modifier.height(Spacing.sm))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.md)
-                ) {
-                    QuickActionButton(
-                        icon = Icons.Outlined.Book,
-                        label = "Daily Journal",
-                        modifier = Modifier.weight(1f),
-                        onClick = onNavigateToJournal
-                    )
-                    QuickActionButton(
-                        icon = Icons.Outlined.Note,
-                        label = "Quick Note",
-                        modifier = Modifier.weight(1f),
-                        onClick = onShowQuickNote
-                    )
-                    QuickActionButton(
-                        icon = Icons.AutoMirrored.Outlined.ListAlt,
-                        label = "Tasks",
-                        modifier = Modifier.weight(1f),
-                        onClick = onNavigateToPlan
-                    )
-                }
-            }
-        }
-        
-        // Habits preview (Premium Confirmation)
-        if (uiState.habits.isNotEmpty()) {
+            
+            // Today Snapshot (CRITICAL)
             item {
-                Column(modifier = Modifier.staggeredEntrance(2)) {
-                    Text(
-                        text = "Today's Habits",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = TextPrimary
-                    )
-                    Spacer(modifier = Modifier.height(Spacing.sm))
-                    
-                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                        uiState.habits.forEach { habitWithStreak ->
-                            PremiumHabitToggle(
-                                name = habitWithStreak.habit.name,
-                                isCompleted = habitWithStreak.isCompletedToday,
-                                isNegative = habitWithStreak.habit.isNegative,
-                                onToggle = { viewModel.toggleHabitCompletion(habitWithStreak.habit.id) },
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                TodaySnapshotCard(
+                    journal = uiState.todayJournal,
+                    modifier = Modifier.staggeredEntrance(0)
+                )
+            }
+
+            // Streak System
+            item {
+                StreakSystemDisplay(
+                    journalStreak = uiState.journalStreak,
+                    habits = uiState.habits,
+                    modifier = Modifier.staggeredEntrance(1)
+                )
+            }
+            
+            // Energy State (Replacement for Mood)
+            item {
+                EnergyStateWidget(
+                    currentEnergy = uiState.todayJournal?.socialBattery ?: com.habitmind.data.database.entity.SocialBattery.MODERATE,
+                    modifier = Modifier.staggeredEntrance(2)
+                )
+            }
+            
+            // Daily Top 3
+            item {
+                DailyTop3Widget(
+                    priorities = uiState.tomorrowPriorities,
+                    modifier = Modifier.staggeredEntrance(3),
+                    onEdit = onNavigateToJournal
+                )
+            }
+            
+            // Identity Alignment Prompt
+            item {
+                IdentityAlignmentPrompt(
+                    currentAlignment = uiState.todayJournal?.identityAlignment ?: com.habitmind.data.database.entity.IdentityAlignment.MOSTLY,
+                    modifier = Modifier.staggeredEntrance(4)
+                )
+            }
+
+            // Journal Status Card
+            item {
+                JournalStatusCard(
+                    journal = uiState.todayJournal,
+                    modifier = Modifier.staggeredEntrance(5),
+                    onContinueJournal = onNavigateToJournal
+                )
+            }
+            
+            // Habits preview
+            if (uiState.habits.isNotEmpty()) {
+                item {
+                    Column(modifier = Modifier.staggeredEntrance(6)) {
+                        Text(
+                            text = "Core Habits",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(Spacing.sm))
+                        
+                        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                            uiState.habits.take(3).forEach { habitWithStreak ->
+                                PremiumHabitToggle(
+                                    name = habitWithStreak.habit.name,
+                                    isCompleted = habitWithStreak.isCompletedToday,
+                                    isNegative = habitWithStreak.habit.isNegative,
+                                    streak = habitWithStreak.currentStreak,
+                                    onToggle = { viewModel.toggleHabitCompletion(habitWithStreak.habit.id) },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     }
                 }
             }
+            
+            item {
+                Spacer(modifier = Modifier.height(100.dp))
+            }
         }
-        
-        item {
-            Spacer(modifier = Modifier.height(100.dp)) // Space for navbar
+
+        // Quick Brain Dump FAB
+        FloatingActionButton(
+            onClick = onShowQuickNote,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 100.dp, end = Spacing.screenHorizontal),
+            containerColor = Accent,
+            contentColor = DarkBackground,
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Icon(Icons.Rounded.Psychology, contentDescription = "Quick Brain Dump")
         }
     }
 }
 
 @Composable
 fun JournalStatusCard(
-    journal: com.habitmind.data.database.entity.DailyJournal?,
+    journal: DailyJournal?,
     modifier: Modifier = Modifier,
     onContinueJournal: () -> Unit = {}
 ) {
@@ -304,7 +323,7 @@ fun JournalStatusCard(
                         .clip(RoundedCornerShape(12.dp))
                         .background(CardBackground)
                         .border(1.dp, GlassBorder, RoundedCornerShape(12.dp))
-                        .clickable(onClick = onContinueJournal) // For now, same nav
+                        .clickable(onClick = onContinueJournal) 
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -320,132 +339,234 @@ fun JournalStatusCard(
 }
 
 @Composable
-fun StatItem(
-    value: String,
-    label: String
+fun TodaySnapshotCard(
+    journal: DailyJournal?,
+    modifier: Modifier = Modifier
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.headlineMedium,
-            color = Accent
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = TextSecondary
-        )
-    }
-}
-
-@Composable
-fun QuickActionButton(
-    icon: ImageVector,
-    label: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit = {}
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "buttonScale"
-    )
-    
     Column(
         modifier = modifier
-            .scale(scale)
-            .clip(RoundedCornerShape(16.dp))
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
             .background(CardBackground)
-            .border(
-                width = 1.dp,
-                color = GlassBorder,
-                shape = RoundedCornerShape(16.dp)
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
-            .padding(Spacing.lg),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .border(1.dp, GlassBorder, RoundedCornerShape(24.dp))
+            .padding(Spacing.lg)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = Accent,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.height(Spacing.sm))
         Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = TextSecondary
+            text = "Today Snapshot",
+            style = MaterialTheme.typography.titleMedium,
+            color = TextPrimary
+        )
+        Spacer(modifier = Modifier.height(Spacing.md))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            SnapshotItem(label = "Sleep", value = "${journal?.sleepHours ?: 0}h", icon = Icons.Rounded.Bolt)
+            SnapshotItem(label = "Deep Work", value = "${journal?.deepWorkHours ?: 0}h", icon = Icons.Rounded.CheckCircle)
+            SnapshotItem(label = "Screen", value = "${journal?.screenTimeHours ?: 0}h", icon = Icons.Rounded.Bolt)
+        }
+    }
+}
+
+@Composable
+private fun SnapshotItem(label: String, value: String, icon: ImageVector) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(DarkBackground),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = Accent, modifier = Modifier.size(20.dp))
+        }
+        Spacer(modifier = Modifier.height(Spacing.xs))
+        Text(value, style = MaterialTheme.typography.labelLarge, color = TextPrimary)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+    }
+}
+
+@Composable
+fun StreakSystemDisplay(
+    journalStreak: Int,
+    habits: List<com.habitmind.data.repository.HabitWithStreak>,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+    ) {
+        StreakCard(
+            label = "Journal",
+            streak = journalStreak,
+            modifier = Modifier.weight(1f)
+        )
+        val bestHabit = habits.maxByOrNull { it.currentStreak }
+        StreakCard(
+            label = bestHabit?.habit?.name ?: "Habits",
+            streak = bestHabit?.currentStreak ?: 0,
+            modifier = Modifier.weight(1f)
         )
     }
 }
 
 @Composable
-private fun MoodIndicator(modifier: Modifier = Modifier) {
-    var selectedMood by remember { mutableIntStateOf(-1) }
-    val moods = listOf("😢", "😐", "😊", "😄", "🤩")
-    val labels = listOf("Terrible", "Meh", "Good", "Great", "Amazing")
-    
+private fun StreakCard(label: String, streak: Int, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(CardBackground)
+            .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Rounded.EmojiEvents, null, tint = Accent, modifier = Modifier.size(16.dp))
+        Spacer(modifier = Modifier.width(Spacing.sm))
+        Column {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            Text("$streak days", style = MaterialTheme.typography.labelLarge, color = TextPrimary)
+        }
+    }
+}
+
+@Composable
+fun EnergyStateWidget(
+    currentEnergy: com.habitmind.data.database.entity.SocialBattery,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(CardBackground)
             .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
-            .padding(Spacing.md),
-        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+            .padding(Spacing.md)
     ) {
-        Text(
-            text = "How are you feeling?",
-            style = MaterialTheme.typography.labelLarge,
-            color = TextSecondary
-        )
-        
+        Text("Current Energy", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
+        Spacer(modifier = Modifier.height(Spacing.md))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            moods.forEachIndexed { index, emoji ->
-                Column(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            if (selectedMood == index) Accent.copy(alpha = 0.15f) else CardBackground
+            EnergyItem(label = "Low", isSelected = currentEnergy == com.habitmind.data.database.entity.SocialBattery.DRAINED)
+            EnergyItem(label = "Stable", isSelected = currentEnergy == com.habitmind.data.database.entity.SocialBattery.MODERATE)
+            EnergyItem(label = "High", isSelected = currentEnergy == com.habitmind.data.database.entity.SocialBattery.CHARGED)
+        }
+    }
+}
+
+@Composable
+private fun EnergyItem(label: String, isSelected: Boolean) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isSelected) Accent else DarkBackground)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (isSelected) DarkBackground else TextSecondary
+        )
+    }
+}
+
+@Composable
+fun DailyTop3Widget(
+    priorities: List<TomorrowPriority>,
+    modifier: Modifier = Modifier,
+    onEdit: () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(CardBackground)
+            .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
+            .padding(Spacing.md)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Top 3 Priorities", style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Rounded.Edit, null, tint = TextMuted, modifier = Modifier.size(16.dp))
+            }
+        }
+        Spacer(modifier = Modifier.height(Spacing.sm))
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            if (priorities.isEmpty()) {
+                Text("No priorities set for tomorrow", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            } else {
+                priorities.sortedBy { it.slot }.forEach { priority ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(Accent)
                         )
-                        .border(
-                            width = if (selectedMood == index) 1.dp else 0.dp,
-                            color = if (selectedMood == index) Accent.copy(alpha = 0.5f) else CardBackground,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .clickable { selectedMood = index }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Text(
-                        text = emoji,
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    if (selectedMood == index) {
-                        Text(
-                            text = labels[index],
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Accent
-                        )
+                        Spacer(modifier = Modifier.width(Spacing.sm))
+                        Text(priority.text, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun IdentityAlignmentPrompt(
+    currentAlignment: com.habitmind.data.database.entity.IdentityAlignment,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Accent.copy(alpha = 0.1f), Color.Transparent)
+                )
+            )
+            .border(1.dp, Accent.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+            .padding(Spacing.md)
+    ) {
+        Text(
+            text = "Did your actions match who you want to become?",
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+            color = TextPrimary
+        )
+        Spacer(modifier = Modifier.height(Spacing.md))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+        ) {
+            AlignmentButton(label = "Yes", isSelected = currentAlignment == com.habitmind.data.database.entity.IdentityAlignment.ALWAYS, modifier = Modifier.weight(1f))
+            AlignmentButton(label = "Partly", isSelected = currentAlignment == com.habitmind.data.database.entity.IdentityAlignment.MOSTLY, modifier = Modifier.weight(1f))
+            AlignmentButton(label = "No", isSelected = currentAlignment == com.habitmind.data.database.entity.IdentityAlignment.RARELY, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun AlignmentButton(label: String, isSelected: Boolean, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isSelected) Accent else DarkBackground)
+            .border(1.dp, if (isSelected) Accent else GlassBorder, RoundedCornerShape(12.dp))
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isSelected) DarkBackground else TextSecondary
+        )
     }
 }

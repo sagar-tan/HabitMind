@@ -17,10 +17,10 @@ interface DailyTrackerDao {
     suspend fun upsert(tracker: DailyTracker): Long
     
     @Update
-    suspend fun update(tracker: DailyTracker)
+    suspend fun update(tracker: DailyTracker): Int
     
     @Delete
-    suspend fun delete(tracker: DailyTracker)
+    suspend fun delete(tracker: DailyTracker): Int
     
     @Query("SELECT * FROM daily_trackers WHERE date = :date LIMIT 1")
     fun getByDate(date: LocalDate): Flow<DailyTracker?>

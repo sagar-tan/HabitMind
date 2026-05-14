@@ -21,10 +21,10 @@ interface JournalDao {
     suspend fun insert(entry: JournalEntry): Long
     
     @Update
-    suspend fun update(entry: JournalEntry)
+    suspend fun update(entry: JournalEntry): Int
     
     @Delete
-    suspend fun delete(entry: JournalEntry)
+    suspend fun delete(entry: JournalEntry): Int
     
     @Query("SELECT * FROM journal_entries WHERE id = :id")
     suspend fun getById(id: Long): JournalEntry?
@@ -55,7 +55,7 @@ interface JournalDao {
     suspend fun insertDailyLog(log: DailyLog): Long
     
     @Delete
-    suspend fun deleteDailyLog(log: DailyLog)
+    suspend fun deleteDailyLog(log: DailyLog): Int
     
     @Query("SELECT * FROM daily_logs ORDER BY timestamp DESC")
     fun getAllDailyLogs(): Flow<List<DailyLog>>

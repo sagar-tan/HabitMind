@@ -25,6 +25,7 @@ enum class SocialBattery {
     DRAINED,
     LOW,
     MODERATE,
+    CHARGED,
     FULL
 }
 
@@ -41,11 +42,14 @@ enum class DayPeriod {
  * Energy levels for state tracking
  */
 enum class EnergyLevel {
+    DRAINED,
     VERY_LOW,
     LOW,
     NEUTRAL,
+    STABLE,
     HIGH,
-    VERY_HIGH
+    VERY_HIGH,
+    CHARGED
 }
 
 /**
@@ -88,9 +92,11 @@ enum class LifeDomain {
  */
 enum class IdentityAlignment {
     NONE,
+    RARELY,
     PARTIAL,
     MOSTLY,
-    FULLY
+    FULLY,
+    ALWAYS
 }
 
 /**

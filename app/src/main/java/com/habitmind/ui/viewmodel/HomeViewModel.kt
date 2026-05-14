@@ -7,6 +7,7 @@ import com.habitmind.HabitMindApplication
 import com.habitmind.data.database.entity.DailyJournal
 import com.habitmind.data.database.entity.JournalEntry
 import com.habitmind.data.database.entity.Task
+import com.habitmind.data.database.entity.TomorrowPriority
 import com.habitmind.data.repository.HabitWithStreak
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +25,9 @@ data class HomeUiState(
     val todayTasks: List<Task> = emptyList(),
     val recentJournalEntries: List<JournalEntry> = emptyList(),
     val todayJournal: DailyJournal? = null,
-    val isLoading: Boolean = true
+    val journalStreak: Int = 0,
+    val isLoading: Boolean = true,
+    val tomorrowPriorities: List<TomorrowPriority> = emptyList()
 )
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
@@ -75,17 +78,50 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         
-        // Load recent journal entries
+        // Load recent journal entries (legacy)
         viewModelScope.launch {
             journalRepository.getRecentEntries(3).collect { entries ->
                 _uiState.value = _uiState.value.copy(recentJournalEntries = entries)
             }
         }
 
-        // Load today's journal status
+        // Load today's journal status and tomorrow's priorities
         viewModelScope.launch {
             dailyJournalRepository.getJournalFlowByDate(LocalDate.now()).collect { journal ->
                 _uiState.value = _uiState.value.copy(todayJournal = journal)
+                if (journal != null) {
+                    dailyJournalRepository.getPrioritiesForJournal(journal.id).collect { priorities ->
+                        _uiState.value = _uiState.value.copy(tomorrowPriorities = priorities)
+                    }
+                }
+            }
+        }
+
+        // Calculate journal streak
+        calculateJournalStreak()
+    }
+
+    private fun calculateJournalStreak() {
+        viewModelScope.launch {
+            dailyJournalRepository.getAllJournalsFlow().collect { journals ->
+                var streak = 0
+                var checkDate = LocalDate.now()
+                
+                // Sort by date just in case
+                val sortedJournals = journals.filter { it.isComplete }.sortedByDescending { it.date }
+                
+                // If today is not complete, start checking from yesterday
+                val completedToday = sortedJournals.any { it.date == checkDate }
+                if (!completedToday) {
+                    checkDate = checkDate.minusDays(1)
+                }
+
+                while (sortedJournals.any { it.date == checkDate }) {
+                    streak++
+                    checkDate = checkDate.minusDays(1)
+                }
+                
+                _uiState.value = _uiState.value.copy(journalStreak = streak)
             }
         }
     }

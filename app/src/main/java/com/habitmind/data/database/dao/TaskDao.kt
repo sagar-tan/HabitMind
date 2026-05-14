@@ -17,10 +17,10 @@ interface TaskDao {
     suspend fun insert(task: Task): Long
     
     @Update
-    suspend fun update(task: Task)
+    suspend fun update(task: Task): Int
     
     @Delete
-    suspend fun delete(task: Task)
+    suspend fun delete(task: Task): Int
     
     @Query("SELECT * FROM tasks WHERE id = :id")
     suspend fun getById(id: Long): Task?
@@ -36,7 +36,7 @@ interface TaskDao {
     
     // Update progress
     @Query("UPDATE tasks SET progress = :progress, completedAt = CASE WHEN :progress >= 100 THEN strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime') ELSE NULL END WHERE id = :taskId")
-    suspend fun updateProgress(taskId: Long, progress: Int)
+    suspend fun updateProgress(taskId: Long, progress: Int): Int
     
     // Get incomplete tasks before a date (for carry forward)
     @Query("SELECT * FROM tasks WHERE date < :date AND progress < 100")
@@ -50,7 +50,7 @@ interface TaskDao {
             originalDate = CASE WHEN originalDate IS NULL THEN date ELSE originalDate END
         WHERE date = :oldDate AND progress < 100
     """)
-    suspend fun carryForwardTasks(oldDate: LocalDate, newDate: LocalDate)
+    suspend fun carryForwardTasks(oldDate: LocalDate, newDate: LocalDate): Int
     
     // Get task statistics for a date range
     @Query("""

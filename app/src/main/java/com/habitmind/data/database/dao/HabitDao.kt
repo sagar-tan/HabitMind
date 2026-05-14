@@ -21,10 +21,10 @@ interface HabitDao {
     suspend fun insert(habit: Habit): Long
     
     @Update
-    suspend fun update(habit: Habit)
+    suspend fun update(habit: Habit): Int
     
     @Delete
-    suspend fun delete(habit: Habit)
+    suspend fun delete(habit: Habit): Int
     
     @Query("SELECT * FROM habits WHERE isArchived = 0 ORDER BY createdAt DESC")
     fun getAllActive(): Flow<List<Habit>>
@@ -36,12 +36,12 @@ interface HabitDao {
     fun getByIdFlow(id: Long): Flow<Habit?>
     
     @Query("UPDATE habits SET isArchived = 1 WHERE id = :id")
-    suspend fun archive(id: Long)
+    suspend fun archive(id: Long): Int
     
     // --- Completions ---
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertCompletion(completion: HabitCompletion)
+    suspend fun insertCompletion(completion: HabitCompletion): Long
     
     @Query("SELECT * FROM habit_completions WHERE habitId = :habitId AND date = :date")
     suspend fun getCompletion(habitId: Long, date: LocalDate): HabitCompletion?
@@ -53,14 +53,14 @@ interface HabitDao {
     fun getCompletionsForDate(date: LocalDate): Flow<List<HabitCompletion>>
     
     @Query("DELETE FROM habit_completions WHERE habitId = :habitId AND date = :date")
-    suspend fun deleteCompletion(habitId: Long, date: LocalDate)
+    suspend fun deleteCompletion(habitId: Long, date: LocalDate): Int
     
     // Toggle completion for a habit on a specific date
     @Query("""
         INSERT OR REPLACE INTO habit_completions (habitId, date, isCompleted, completedAt)
         VALUES (:habitId, :date, :isCompleted, :completedAt)
     """)
-    suspend fun setCompletion(habitId: Long, date: LocalDate, isCompleted: Boolean, completedAt: String?)
+    suspend fun setCompletion(habitId: Long, date: LocalDate, isCompleted: Boolean, completedAt: String?): Long
     
     // Get streak count - consecutive days completed ending on given date
     @Query("""
@@ -97,5 +97,5 @@ interface HabitDao {
     fun getImagesForHabit(habitId: Long): Flow<List<HabitImage>>
     
     @Query("DELETE FROM habit_images WHERE id = :imageId")
-    suspend fun deleteImage(imageId: Long)
+    suspend fun deleteImage(imageId: Long): Int
 }

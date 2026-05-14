@@ -20,10 +20,10 @@ interface GoalDao {
     suspend fun insert(goal: Goal): Long
     
     @Update
-    suspend fun update(goal: Goal)
+    suspend fun update(goal: Goal): Int
     
     @Delete
-    suspend fun delete(goal: Goal)
+    suspend fun delete(goal: Goal): Int
     
     @Query("SELECT * FROM goals WHERE id = :id")
     suspend fun getById(id: Long): Goal?
@@ -42,12 +42,12 @@ interface GoalDao {
     
     // Update goal progress
     @Query("UPDATE goals SET progressPercent = :progress, isCompleted = CASE WHEN :progress >= 100 THEN 1 ELSE 0 END, completedAt = CASE WHEN :progress >= 100 THEN datetime('now') ELSE NULL END WHERE id = :goalId")
-    suspend fun updateProgress(goalId: Long, progress: Int)
+    suspend fun updateProgress(goalId: Long, progress: Int): Int
     
     // --- Goal Updates (Weekly Progress) ---
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertUpdate(update: GoalUpdate)
+    suspend fun insertUpdate(update: GoalUpdate): Long
     
     @Query("SELECT * FROM goal_updates WHERE goalId = :goalId ORDER BY weekStart DESC")
     fun getUpdatesForGoal(goalId: Long): Flow<List<GoalUpdate>>

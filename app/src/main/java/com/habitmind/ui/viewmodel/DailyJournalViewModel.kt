@@ -36,16 +36,30 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<DailyJournalUiState> = _selectedDate.flatMapLatest { date ->
-        combine(
-            repository.getJournalFlowByDate(date),
-            flow { emit(date) }
-        ) { journal, d ->
+        val journalFlow = repository.getJournalFlowByDate(date)
+        
+        journalFlow.flatMapLatest { journal ->
             if (journal == null) {
-                DailyJournalUiState(selectedDate = d, isLoading = false)
+                flowOf(DailyJournalUiState(selectedDate = date, isLoading = false))
             } else {
-                // We need to fetch related data if journal exists
-                // For simplicity in the first draft, we'll use a more complex combine or separate flows
-                DailyJournalUiState(journal = journal, selectedDate = d, isLoading = false)
+                combine(
+                    repository.getStateSlicesForJournal(journal.id),
+                    repository.getEventsForJournal(journal.id),
+                    repository.getDiagnosticsForJournal(journal.id),
+                    repository.getActionFixesForJournal(journal.id),
+                    repository.getPrioritiesForJournal(journal.id)
+                ) { slices, events, diagnostics, fixes, priorities ->
+                    DailyJournalUiState(
+                        journal = journal,
+                        slices = slices,
+                        events = events,
+                        diagnostics = diagnostics,
+                        actionFixes = fixes,
+                        priorities = priorities,
+                        selectedDate = date,
+                        isLoading = false
+                    )
+                }
             }
         }
     }.stateIn(
@@ -77,8 +91,8 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
             _isSaving.value = true
-            delay(300)
-            repository.saveJournal(journal)
+            delay(200)
+            repository.saveJournal(journal.copy(updatedAt = java.time.LocalDateTime.now()))
             _isSaving.value = false
         }
     }
@@ -96,7 +110,6 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
         }
     }
     
-    // Add more save methods for related entities as needed for the UI
     fun saveStateSlice(slice: JournalStateSlice) {
         viewModelScope.launch {
             repository.saveStateSlice(slice)
@@ -108,6 +121,38 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
         viewModelScope.launch {
             val position = uiState.value.events.size
             repository.saveEvent(JournalEvent(journalId = currentJournal.id, position = position, text = text))
+        }
+    }
+
+    fun deleteEvent(event: JournalEvent) {
+        viewModelScope.launch {
+            repository.deleteEvent(event)
+        }
+    }
+
+    fun addActionFix(problem: String, fix: String) {
+        val currentJournal = uiState.value.journal ?: return
+        viewModelScope.launch {
+            val position = uiState.value.actionFixes.size
+            repository.saveActionFix(ActionFix(journalId = currentJournal.id, problem = problem, fix = fix, position = position))
+        }
+    }
+
+    fun deleteActionFix(fix: ActionFix) {
+        viewModelScope.launch {
+            repository.deleteActionFix(fix)
+        }
+    }
+
+    fun savePriority(priority: TomorrowPriority) {
+        viewModelScope.launch {
+            repository.savePriority(priority)
+        }
+    }
+
+    fun toggleDiagnostic(diagnostic: BehaviorDiagnostic) {
+        viewModelScope.launch {
+            repository.saveDiagnostic(diagnostic.copy(isChecked = !diagnostic.isChecked))
         }
     }
 }

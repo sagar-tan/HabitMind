@@ -1,7 +1,21 @@
 package com.habitmind.data.database.dao
 
-import androidx.room.*
-import com.habitmind.data.database.entity.*
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
+import com.habitmind.data.database.entity.ActionFix
+import com.habitmind.data.database.entity.BehaviorDiagnostic
+import com.habitmind.data.database.entity.DailyJournal
+import com.habitmind.data.database.entity.DomainCheckin
+import com.habitmind.data.database.entity.DomainFlag
+import com.habitmind.data.database.entity.JournalEvent
+import com.habitmind.data.database.entity.JournalStateSlice
+import com.habitmind.data.database.entity.LifeDomain
+import com.habitmind.data.database.entity.TomorrowPriority
+
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
@@ -14,7 +28,7 @@ interface DailyJournalDao {
     suspend fun insertJournal(journal: DailyJournal): Long
 
     @Update
-    suspend fun updateJournal(journal: DailyJournal)
+    suspend fun updateJournal(journal: DailyJournal): Int
 
     @Query("SELECT * FROM daily_journals WHERE date = :date")
     suspend fun getJournalByDate(date: LocalDate): DailyJournal?
@@ -28,7 +42,7 @@ interface DailyJournalDao {
     // --- State Slices ---
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertStateSlice(slice: JournalStateSlice)
+    suspend fun insertStateSlice(slice: JournalStateSlice): Long
 
     @Query("SELECT * FROM journal_state_slices WHERE journalId = :journalId")
     fun getStateSlicesForJournal(journalId: Long): Flow<List<JournalStateSlice>>
@@ -36,18 +50,18 @@ interface DailyJournalDao {
     // --- Journal Events ---
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertEvent(event: JournalEvent)
+    suspend fun insertEvent(event: JournalEvent): Long
 
     @Query("SELECT * FROM journal_events WHERE journalId = :journalId ORDER BY position ASC")
     fun getEventsForJournal(journalId: Long): Flow<List<JournalEvent>>
 
     @Delete
-    suspend fun deleteEvent(event: JournalEvent)
+    suspend fun deleteEvent(event: JournalEvent): Int
 
     // --- Behavior Diagnostics ---
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertDiagnostic(diagnostic: BehaviorDiagnostic)
+    suspend fun insertDiagnostic(diagnostic: BehaviorDiagnostic): Long
 
     @Query("SELECT * FROM behavior_diagnostics WHERE journalId = :journalId")
     fun getDiagnosticsForJournal(journalId: Long): Flow<List<BehaviorDiagnostic>>
@@ -55,18 +69,18 @@ interface DailyJournalDao {
     // --- Action Fixes ---
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertActionFix(fix: ActionFix)
+    suspend fun insertActionFix(fix: ActionFix): Long
 
     @Query("SELECT * FROM action_fixes WHERE journalId = :journalId ORDER BY position ASC")
     fun getActionFixesForJournal(journalId: Long): Flow<List<ActionFix>>
 
     @Delete
-    suspend fun deleteActionFix(fix: ActionFix)
+    suspend fun deleteActionFix(fix: ActionFix): Int
 
     // --- Tomorrow Priorities ---
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertPriority(priority: TomorrowPriority)
+    suspend fun insertPriority(priority: TomorrowPriority): Long
 
     @Query("SELECT * FROM tomorrow_priorities WHERE journalId = :journalId ORDER BY slot ASC")
     fun getPrioritiesForJournal(journalId: Long): Flow<List<TomorrowPriority>>
@@ -85,7 +99,7 @@ interface DailyJournalDao {
     // --- Domain Flags ---
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertDomainFlag(flag: DomainFlag)
+    suspend fun insertDomainFlag(flag: DomainFlag): Long
 
     @Query("SELECT * FROM domain_flags WHERE checkinId = :checkinId")
     fun getFlagsForCheckin(checkinId: Long): Flow<List<DomainFlag>>
