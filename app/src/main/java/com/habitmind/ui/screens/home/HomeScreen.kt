@@ -1,62 +1,75 @@
 package com.habitmind.ui.screens.home
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.EmojiEvents
-import androidx.compose.material.icons.rounded.Psychology
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.habitmind.data.database.entity.DailyJournal
-import com.habitmind.data.database.entity.TomorrowPriority
+import com.habitmind.data.database.entity.*
 import com.habitmind.ui.components.PremiumHabitToggle
 import com.habitmind.ui.components.fadeScaleIn
 import com.habitmind.ui.components.staggeredEntrance
 import com.habitmind.ui.theme.*
 import com.habitmind.ui.viewmodel.HomeViewModel
+import com.habitmind.ui.viewmodel.StateCategory
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+/**
+ * Custom modifier for premium fading edges in horizontal scroll
+ */
+fun Modifier.horizontalFadingEdge(
+    edgeWidth: Dp = 24.dp
+): Modifier = this
+    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+    .drawWithContent {
+        drawContent()
+        
+        // Define the gradient
+        val colors = listOf(Color.Transparent, Color.Black)
+        
+        // Draw left fade
+        drawRect(
+            brush = Brush.horizontalGradient(colors, endX = edgeWidth.toPx()),
+            blendMode = BlendMode.DstIn
+        )
+        
+        // Draw right fade
+        drawRect(
+            brush = Brush.horizontalGradient(colors.reversed(), startX = size.width - edgeWidth.toPx()),
+            blendMode = BlendMode.DstIn
+        )
+    }
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     userName: String? = null,
@@ -67,452 +80,477 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val today = LocalDate.now()
-    val dayName = today.format(DateTimeFormatter.ofPattern("EEEE"))
-    val dateFormatted = today.format(DateTimeFormatter.ofPattern("MMM d"))
+    val sheetState = rememberModalBottomSheetState()
+    val haptic = LocalHapticFeedback.current
     
-    val displayName = uiState.userName ?: userName
-    
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(DarkBackground)
-                .padding(horizontal = Spacing.screenHorizontal),
-            verticalArrangement = Arrangement.spacedBy(Spacing.lg)
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xl)
         ) {
+            // 1. HEADER
             item {
-                Spacer(modifier = Modifier.height(Spacing.lg))
-                Row(
+                HomeHeader(
+                    displayName = uiState.userName ?: userName,
+                    onNavigateToSettings = onNavigateToSettings,
+                    modifier = Modifier.padding(horizontal = Spacing.screenHorizontal)
+                )
+            }
+            
+            // 2. TODAY PROGRESS (Fun Animated Version)
+            item {
+                TodayProgressSection(
+                    progress = uiState.totalProgress,
+                    pendingCount = uiState.pendingCount,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .fadeScaleIn(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = if (!displayName.isNullOrBlank()) "Hello, $displayName" else dayName,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = if (!displayName.isNullOrBlank()) Accent else TextSecondary
-                        )
-                        Text(
-                            text = if (!displayName.isNullOrBlank()) dayName else dateFormatted,
-                            style = if (!displayName.isNullOrBlank()) 
-                                MaterialTheme.typography.titleLarge 
-                            else 
-                                MaterialTheme.typography.headlineLarge,
-                            color = TextPrimary
-                        )
-                        if (!displayName.isNullOrBlank()) {
-                            Text(
-                                text = dateFormatted,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TextSecondary
-                            )
-                        }
-                    }
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = "Settings",
-                            tint = TextSecondary
-                        )
-                    }
-                }
+                        .padding(horizontal = Spacing.screenHorizontal)
+                        .fadeScaleIn()
+                )
             }
             
-            // Today Snapshot (CRITICAL)
+            // 3. STATE CONTROL
             item {
-                TodaySnapshotCard(
+                StateControlSection(
                     journal = uiState.todayJournal,
-                    modifier = Modifier.staggeredEntrance(0)
-                )
-            }
-
-            // Streak System
-            item {
-                StreakSystemDisplay(
-                    journalStreak = uiState.journalStreak,
-                    habits = uiState.habits,
-                    modifier = Modifier.staggeredEntrance(1)
+                    onSelectCategory = { viewModel.showStateEditor(it) },
+                    modifier = Modifier
+                        .padding(horizontal = Spacing.screenHorizontal)
+                        .staggeredEntrance(1)
                 )
             }
             
-            // Energy State (Replacement for Mood)
+            // 4. TODAY STATS
             item {
-                EnergyStateWidget(
-                    currentEnergy = uiState.todayJournal?.socialBattery ?: com.habitmind.data.database.entity.SocialBattery.MODERATE,
-                    modifier = Modifier.staggeredEntrance(2)
+                TactileStatGrid(
+                    journal = uiState.todayJournal,
+                    modifier = Modifier
+                        .padding(horizontal = Spacing.screenHorizontal)
+                        .staggeredEntrance(2)
                 )
             }
             
-            // Daily Top 3
+            // 5. PRIMARY JOURNAL CTA
             item {
-                DailyTop3Widget(
+                StrongJournalCTA(
+                    journal = uiState.todayJournal,
+                    onAction = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onNavigateToJournal()
+                    },
+                    modifier = Modifier
+                        .padding(horizontal = Spacing.screenHorizontal)
+                        .staggeredEntrance(3)
+                )
+            }
+            
+            // 6. TOP 3
+            item {
+                TactileTop3List(
                     priorities = uiState.tomorrowPriorities,
-                    modifier = Modifier.staggeredEntrance(3),
-                    onEdit = onNavigateToJournal
+                    onEdit = onNavigateToJournal,
+                    modifier = Modifier
+                        .padding(horizontal = Spacing.screenHorizontal)
+                        .staggeredEntrance(4)
                 )
             }
             
-            // Identity Alignment Prompt
+            // 7. PENDING CHECKLIST
             item {
-                IdentityAlignmentPrompt(
-                    currentAlignment = uiState.todayJournal?.identityAlignment ?: com.habitmind.data.database.entity.IdentityAlignment.MOSTLY,
-                    modifier = Modifier.staggeredEntrance(4)
-                )
-            }
-
-            // Journal Status Card
-            item {
-                JournalStatusCard(
+                SatisfyingChecklist(
                     journal = uiState.todayJournal,
-                    modifier = Modifier.staggeredEntrance(5),
-                    onContinueJournal = onNavigateToJournal
+                    habits = uiState.habits,
+                    onToggle = { 
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.toggleHabitCompletion(it)
+                    },
+                    modifier = Modifier
+                        .padding(horizontal = Spacing.screenHorizontal)
+                        .staggeredEntrance(5)
                 )
             }
             
-            // Habits preview
-            if (uiState.habits.isNotEmpty()) {
-                item {
-                    Column(modifier = Modifier.staggeredEntrance(6)) {
-                        Text(
-                            text = "Core Habits",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = TextPrimary
-                        )
-                        Spacer(modifier = Modifier.height(Spacing.sm))
-                        
-                        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                            uiState.habits.take(3).forEach { habitWithStreak ->
-                                PremiumHabitToggle(
-                                    name = habitWithStreak.habit.name,
-                                    isCompleted = habitWithStreak.isCompletedToday,
-                                    isNegative = habitWithStreak.habit.isNegative,
-                                    streak = habitWithStreak.currentStreak,
-                                    onToggle = { viewModel.toggleHabitCompletion(habitWithStreak.habit.id) },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        }
-                    }
+            // 8. QUICK ACTIONS
+            item {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "QUICK ACTIONS", 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = TextSubtle, 
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = Spacing.screenHorizontal)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    QuickActionPills(
+                        onAction = { /* Handle actions */ },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .staggeredEntrance(6)
+                    )
                 }
             }
             
-            item {
-                Spacer(modifier = Modifier.height(100.dp))
+            // 9. ATTENTION INSIGHT
+            uiState.attentionLeak?.let { leak ->
+                item {
+                    ActionableInsightCard(
+                        title = "${leak.appName} ${leak.usageTime}",
+                        subtitle = leak.insight,
+                        actionLabel = leak.actionableLabel,
+                        icon = Icons.Rounded.Smartphone,
+                        tint = Warning,
+                        onAction = { /* Handle action */ },
+                        modifier = Modifier
+                            .padding(horizontal = Spacing.screenHorizontal)
+                            .staggeredEntrance(7)
+                    )
+                }
             }
+            
+            // 10. REVIEW REMINDER
+            uiState.reviewReminder?.let { reminder ->
+                item {
+                    ActionableInsightCard(
+                        title = reminder.title,
+                        subtitle = reminder.subtitle,
+                        actionLabel = reminder.actionableLabel,
+                        icon = Icons.Rounded.EventRepeat,
+                        tint = Accent,
+                        onAction = { /* Handle action */ },
+                        modifier = Modifier
+                            .padding(horizontal = Spacing.screenHorizontal)
+                            .staggeredEntrance(8)
+                    )
+                }
+            }
+            
+            item { Spacer(modifier = Modifier.height(120.dp)) }
         }
 
-        // Quick Brain Dump FAB
-        FloatingActionButton(
-            onClick = onShowQuickNote,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 100.dp, end = Spacing.screenHorizontal),
-            containerColor = Accent,
-            contentColor = DarkBackground,
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Icon(Icons.Rounded.Psychology, contentDescription = "Quick Brain Dump")
+        // State Editor Bottom Sheet
+        if (uiState.isStateEditorVisible) {
+            ModalBottomSheet(
+                onDismissRequest = { viewModel.hideStateEditor() },
+                sheetState = sheetState,
+                containerColor = DarkSurface
+            ) {
+                StateEditorContent(
+                    category = uiState.activeStateCategory!!,
+                    journal = uiState.todayJournal,
+                    onUpdateEnergy = { viewModel.updateEnergyLevel(it); viewModel.hideStateEditor() },
+                    onUpdateSocial = { viewModel.updateSocialBattery(it); viewModel.hideStateEditor() },
+                    onUpdateFocus = { viewModel.updateFocusLevel(it); viewModel.hideStateEditor() }
+                )
+            }
         }
     }
 }
 
 @Composable
-fun JournalStatusCard(
-    journal: DailyJournal?,
-    modifier: Modifier = Modifier,
-    onContinueJournal: () -> Unit = {}
+private fun TodayProgressSection(
+    progress: Float,
+    pendingCount: Int,
+    modifier: Modifier = Modifier
 ) {
-    val isStarted = journal != null
-    val isComplete = journal?.isComplete ?: false
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+            Text("TODAY PROGRESS", style = MaterialTheme.typography.labelSmall, color = TextSubtle, fontWeight = FontWeight.ExtraBold)
+            Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.titleLarge, color = Accent, fontWeight = FontWeight.Black)
+        }
+        
+        FunAnimatedProgressBar(progress = progress)
+        
+        Text(
+            text = if (pendingCount > 0) "$pendingCount actions remaining to unlock optimal state" else "Optimal state achieved",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextSecondary
+        )
+    }
+}
+
+/**
+ * Premium, Fun Animated Progress Bar with Spring Physics and Liquid Glow
+ */
+@Composable
+fun FunAnimatedProgressBar(progress: Float) {
+    // Spring physics for "liquid" momentum
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress.coerceIn(0f, 1f),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "progress_pulse"
+    )
+
+    // Infinite pulse for the "glow tip"
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(16.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(DarkSurface)
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val barWidth = size.width * animatedProgress
+            val barHeight = size.height
+            
+            // 1. Draw Subdued Grid/Segments (Background)
+            val segmentCount = 10
+            val segmentWidth = size.width / segmentCount
+            for (i in 1 until segmentCount) {
+                drawLine(
+                    color = Color.White.copy(alpha = 0.05f),
+                    start = Offset(i * segmentWidth, 0f),
+                    end = Offset(i * segmentWidth, barHeight),
+                    strokeWidth = 1.dp.toPx()
+                )
+            }
+
+            // 2. Draw Progress Fill with Gradient
+            if (barWidth > 0) {
+                drawRoundRect(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(Accent, AccentVariant),
+                        startX = 0f,
+                        endX = barWidth
+                    ),
+                    size = Size(barWidth, barHeight),
+                    cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
+                )
+                
+                // 3. Draw "Liquid Glow" at the tip
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Accent.copy(alpha = 0.6f * pulseAlpha), Color.Transparent),
+                        center = Offset(barWidth, barHeight / 2),
+                        radius = 16.dp.toPx()
+                    ),
+                    radius = 16.dp.toPx(),
+                    center = Offset(barWidth, barHeight / 2)
+                )
+
+                // 4. Draw Tip Highlight
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.3f),
+                    topLeft = Offset(barWidth - 4.dp.toPx(), 0f),
+                    size = Size(4.dp.toPx(), barHeight),
+                    cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeHeader(
+    displayName: String?,
+    onNavigateToSettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val today = LocalDate.now()
     
-    Column(
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 24.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                text = today.format(DateTimeFormatter.ofPattern("EEEE, MMMM d")),
+                style = MaterialTheme.typography.labelMedium,
+                color = TextSecondary,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Hello, ${displayName ?: "Sagar"}",
+                style = MaterialTheme.typography.headlineSmall,
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.5).sp
+            )
+        }
+        IconButton(
+            onClick = onNavigateToSettings,
+            modifier = Modifier.size(40.dp).clip(CircleShape).background(DarkSurface)
+        ) {
+            Icon(Icons.Outlined.Settings, "Settings", tint = TextPrimary, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun StateControlSection(
+    journal: DailyJournal?,
+    onSelectCategory: (StateCategory) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        CardBackground,
-                        CardBackground.copy(alpha = 0.95f)
-                    )
-                )
-            )
-            .border(
-                width = 1.dp,
-                color = if (isComplete) Accent.copy(alpha = 0.5f) else GlassBorder,
-                shape = RoundedCornerShape(16.dp)
-            )
-            .clickable(onClick = onContinueJournal)
-            .padding(Spacing.lg)
+            .background(DarkSurface)
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Today's Journal",
-                style = MaterialTheme.typography.titleMedium,
-                color = TextPrimary
-            )
-            
-            if (isComplete) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Accent.copy(alpha = 0.2f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "COMPLETE",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Accent
-                    )
-                }
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(Spacing.md))
-        
-        Text(
-            text = when {
-                isComplete -> "You've captured your day. Reflection complete."
-                isStarted -> "You've started your journal. Keep going!"
-                else -> "Take a moment to reflect on your day."
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary
+        StateSegment(
+            label = "Energy",
+            value = journal?.energyLevel?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Neutral",
+            modifier = Modifier.weight(1f),
+            onClick = { onSelectCategory(StateCategory.ENERGY) }
         )
-        
-        Spacer(modifier = Modifier.height(Spacing.lg))
-        
-        // CTAs
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.md)
-        ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (isComplete) CardBackground else Accent)
-                    .border(
-                        width = 1.dp,
-                        color = if (isComplete) GlassBorder else Accent,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .clickable(onClick = onContinueJournal)
-                    .padding(vertical = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = if (isStarted) "Continue" else "Start Journal",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (isComplete) TextPrimary else DarkBackground
-                )
-            }
-            
-            if (!isComplete) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(CardBackground)
-                        .border(1.dp, GlassBorder, RoundedCornerShape(12.dp))
-                        .clickable(onClick = onContinueJournal) 
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Minimum Mode",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = TextPrimary
-                    )
-                }
-            }
+        StateSegment(
+            label = "Social",
+            value = journal?.socialBattery?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Neutral",
+            modifier = Modifier.weight(1f),
+            onClick = { onSelectCategory(StateCategory.SOCIAL) }
+        )
+        StateSegment(
+            label = "Focus",
+            value = journal?.focusLevel?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Okay",
+            modifier = Modifier.weight(1f),
+            onClick = { onSelectCategory(StateCategory.FOCUS) }
+        )
+    }
+}
+
+@Composable
+private fun StateSegment(label: String, value: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = TextSubtle)
+            Text(value, style = MaterialTheme.typography.bodyMedium, color = TextPrimary, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
-fun TodaySnapshotCard(
+private fun TactileStatGrid(
     journal: DailyJournal?,
     modifier: Modifier = Modifier
 ) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.lg)) {
+            LargeStatBlock(label = "SLEEP", value = "${journal?.sleepHours ?: 0}h", icon = Icons.Rounded.NightsStay, modifier = Modifier.weight(1f))
+            LargeStatBlock(label = "STEPS", value = "${(journal?.steps ?: 0).toString().replace("(\\d)(?=(\\d{3})+$)".toRegex(), "$1,")}", icon = Icons.Rounded.DirectionsWalk, modifier = Modifier.weight(1f))
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.lg)) {
+            LargeStatBlock(label = "WORKOUT", value = if (journal?.workoutCompleted == true) "DONE ✅" else "PENDING", icon = Icons.Rounded.FitnessCenter, modifier = Modifier.weight(1f))
+            LargeStatBlock(label = "DEEP FOCUS", value = "${journal?.deepWorkHours ?: 0}h", icon = Icons.Rounded.Psychology, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun LargeStatBlock(label: String, value: String, icon: ImageVector, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(DarkSurface)
+            .padding(16.dp)
+    ) {
+        Icon(icon, null, tint = TextSubtle, modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(value, style = MaterialTheme.typography.headlineSmall, color = TextPrimary, fontWeight = FontWeight.Black)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = TextSecondary, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun StrongJournalCTA(
+    journal: DailyJournal?,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isComplete = journal?.isComplete ?: false
+    val text = when {
+        isComplete -> "Review Today"
+        journal != null -> "Continue Journal"
+        else -> "Start Today's Journal"
+    }
+    
+    Button(
+        onClick = onAction,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(64.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Accent,
+            contentColor = DarkBackground
+        ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+            Icon(Icons.Rounded.ArrowForward, null, modifier = Modifier.size(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun TactileTop3List(
+    priorities: List<TomorrowPriority>,
+    onEdit: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val completedCount = priorities.count { it.text.isNotBlank() }
+    
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(CardBackground)
-            .border(1.dp, GlassBorder, RoundedCornerShape(24.dp))
-            .padding(Spacing.lg)
+            .background(DarkSurface)
+            .padding(20.dp)
     ) {
-        Text(
-            text = "Today Snapshot",
-            style = MaterialTheme.typography.titleMedium,
-            color = TextPrimary
-        )
-        Spacer(modifier = Modifier.height(Spacing.md))
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            SnapshotItem(label = "Sleep", value = "${journal?.sleepHours ?: 0}h", icon = Icons.Rounded.Bolt)
-            SnapshotItem(label = "Deep Work", value = "${journal?.deepWorkHours ?: 0}h", icon = Icons.Rounded.CheckCircle)
-            SnapshotItem(label = "Screen", value = "${journal?.screenTimeHours ?: 0}h", icon = Icons.Rounded.Bolt)
-        }
-    }
-}
-
-@Composable
-private fun SnapshotItem(label: String, value: String, icon: ImageVector) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(DarkBackground),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, tint = Accent, modifier = Modifier.size(20.dp))
-        }
-        Spacer(modifier = Modifier.height(Spacing.xs))
-        Text(value, style = MaterialTheme.typography.labelLarge, color = TextPrimary)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
-    }
-}
-
-@Composable
-fun StreakSystemDisplay(
-    journalStreak: Int,
-    habits: List<com.habitmind.data.repository.HabitWithStreak>,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
-    ) {
-        StreakCard(
-            label = "Journal",
-            streak = journalStreak,
-            modifier = Modifier.weight(1f)
-        )
-        val bestHabit = habits.maxByOrNull { it.currentStreak }
-        StreakCard(
-            label = bestHabit?.habit?.name ?: "Habits",
-            streak = bestHabit?.currentStreak ?: 0,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun StreakCard(label: String, streak: Int, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(CardBackground)
-            .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(Icons.Rounded.EmojiEvents, null, tint = Accent, modifier = Modifier.size(16.dp))
-        Spacer(modifier = Modifier.width(Spacing.sm))
-        Column {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
-            Text("$streak days", style = MaterialTheme.typography.labelLarge, color = TextPrimary)
-        }
-    }
-}
-
-@Composable
-fun EnergyStateWidget(
-    currentEnergy: com.habitmind.data.database.entity.SocialBattery,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(CardBackground)
-            .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
-            .padding(Spacing.md)
-    ) {
-        Text("Current Energy", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
-        Spacer(modifier = Modifier.height(Spacing.md))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            EnergyItem(label = "Low", isSelected = currentEnergy == com.habitmind.data.database.entity.SocialBattery.DRAINED)
-            EnergyItem(label = "Stable", isSelected = currentEnergy == com.habitmind.data.database.entity.SocialBattery.MODERATE)
-            EnergyItem(label = "High", isSelected = currentEnergy == com.habitmind.data.database.entity.SocialBattery.CHARGED)
-        }
-    }
-}
-
-@Composable
-private fun EnergyItem(label: String, isSelected: Boolean) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (isSelected) Accent else DarkBackground)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (isSelected) DarkBackground else TextSecondary
-        )
-    }
-}
-
-@Composable
-fun DailyTop3Widget(
-    priorities: List<TomorrowPriority>,
-    modifier: Modifier = Modifier,
-    onEdit: () -> Unit
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(CardBackground)
-            .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
-            .padding(Spacing.md)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Top 3 Priorities", style = MaterialTheme.typography.titleSmall, color = TextPrimary)
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Rounded.Edit, null, tint = TextMuted, modifier = Modifier.size(16.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text("TODAY'S TOP 3", style = MaterialTheme.typography.labelSmall, color = TextSubtle, fontWeight = FontWeight.Bold)
+                Text("$completedCount/3 complete", style = MaterialTheme.typography.bodySmall, color = Accent)
+            }
+            IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Rounded.Edit, null, tint = TextSubtle, modifier = Modifier.size(16.dp))
             }
         }
-        Spacer(modifier = Modifier.height(Spacing.sm))
-        Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-            if (priorities.isEmpty()) {
-                Text("No priorities set for tomorrow", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-            } else {
-                priorities.sortedBy { it.slot }.forEach { priority ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(Accent)
-                        )
-                        Spacer(modifier = Modifier.width(Spacing.sm))
-                        Text(priority.text, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+        Spacer(modifier = Modifier.height(16.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            (1..3).forEach { slot ->
+                val priority = priorities.find { it.slot == slot }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        modifier = Modifier.size(24.dp).border(1.5.dp, if (priority != null) Accent else TextMuted, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (priority != null) {
+                            Icon(Icons.Rounded.Check, null, tint = Accent, modifier = Modifier.size(14.dp))
+                        } else {
+                            Text(slot.toString(), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        }
                     }
+                    Text(
+                        text = priority?.text ?: "Set priority $slot",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (priority != null) TextPrimary else TextMuted,
+                        textDecoration = if (priority != null) TextDecoration.LineThrough else TextDecoration.None
+                    )
                 }
             }
         }
@@ -520,53 +558,199 @@ fun DailyTop3Widget(
 }
 
 @Composable
-fun IdentityAlignmentPrompt(
-    currentAlignment: com.habitmind.data.database.entity.IdentityAlignment,
+private fun SatisfyingChecklist(
+    journal: DailyJournal?,
+    habits: List<com.habitmind.data.repository.HabitWithStreak>,
+    onToggle: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Accent.copy(alpha = 0.1f), Color.Transparent)
-                )
-            )
-            .border(1.dp, Accent.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
-            .padding(Spacing.md)
-    ) {
-        Text(
-            text = "Did your actions match who you want to become?",
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-            color = TextPrimary
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        Text("PENDING ACTIONS", style = MaterialTheme.typography.labelSmall, color = TextSubtle, fontWeight = FontWeight.Bold)
+        
+        ChecklistItem(
+            label = "Daily Journal",
+            isDone = journal?.isComplete ?: false,
+            onClick = { /* Navigate */ }
         )
-        Spacer(modifier = Modifier.height(Spacing.md))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
-        ) {
-            AlignmentButton(label = "Yes", isSelected = currentAlignment == com.habitmind.data.database.entity.IdentityAlignment.ALWAYS, modifier = Modifier.weight(1f))
-            AlignmentButton(label = "Partly", isSelected = currentAlignment == com.habitmind.data.database.entity.IdentityAlignment.MOSTLY, modifier = Modifier.weight(1f))
-            AlignmentButton(label = "No", isSelected = currentAlignment == com.habitmind.data.database.entity.IdentityAlignment.RARELY, modifier = Modifier.weight(1f))
+        
+        habits.take(3).forEach { habit ->
+            ChecklistItem(
+                label = habit.habit.name,
+                isDone = habit.isCompletedToday,
+                onClick = { onToggle(habit.habit.id) }
+            )
         }
     }
 }
 
 @Composable
-private fun AlignmentButton(label: String, isSelected: Boolean, modifier: Modifier = Modifier) {
+private fun ChecklistItem(label: String, isDone: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isDone) DarkSurface.copy(alpha = 0.5f) else DarkSurface)
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(if (isDone) Accent else DarkBackground)
+                .border(1.dp, if (isDone) Accent else TextMuted, RoundedCornerShape(6.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isDone) Icon(Icons.Rounded.Check, null, tint = DarkBackground, modifier = Modifier.size(16.dp))
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (isDone) TextSubtle else TextPrimary,
+            textDecoration = if (isDone) TextDecoration.LineThrough else TextDecoration.None
+        )
+    }
+}
+
+@Composable
+private fun QuickActionPills(
+    onAction: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .padding(horizontal = Spacing.screenHorizontal),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+    ) {
+        ActionPill("Log", Icons.Rounded.Edit, onAction, Modifier.weight(1f))
+        ActionPill("Task", Icons.Rounded.Add, onAction, Modifier.weight(1f))
+        ActionPill("Workout", Icons.Rounded.FitnessCenter, onAction, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun ActionPill(label: String, icon: ImageVector, onClick: (String) -> Unit, modifier: Modifier = Modifier) {
+    Button(
+        onClick = { onClick(label) },
+        modifier = modifier.height(56.dp),
+        shape = RoundedCornerShape(100.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = DarkSurface, contentColor = TextPrimary),
+        contentPadding = PaddingValues(horizontal = 8.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(icon, null, tint = Accent, modifier = Modifier.size(20.dp))
+            Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun ActionableInsightCard(
+    title: String,
+    subtitle: String,
+    actionLabel: String,
+    icon: ImageVector,
+    tint: Color,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (isSelected) Accent else DarkBackground)
-            .border(1.dp, if (isSelected) Accent else GlassBorder, RoundedCornerShape(12.dp))
-            .padding(vertical = 8.dp),
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(tint.copy(alpha = 0.08f))
+            .border(1.dp, tint.copy(alpha = 0.15f), RoundedCornerShape(24.dp))
+            .padding(20.dp)
+    ) {
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(
+                modifier = Modifier.size(40.dp).clip(CircleShape).background(tint.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary, fontWeight = FontWeight.Bold)
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = actionLabel,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = tint,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.clickable(onClick = onAction)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StateEditorContent(
+    category: StateCategory,
+    journal: DailyJournal?,
+    onUpdateEnergy: (EnergyLevel) -> Unit,
+    onUpdateSocial: (SocialBattery) -> Unit,
+    onUpdateFocus: (FocusLevel) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(Spacing.lg)
+            .padding(bottom = 48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Set current ${category.name.lowercase()}",
+            style = MaterialTheme.typography.headlineSmall,
+            color = TextPrimary,
+            fontWeight = FontWeight.Black
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        when (category) {
+            StateCategory.ENERGY -> {
+                EnergyLevel.values().forEach { level ->
+                    EditorOption(level.name, journal?.energyLevel == level) { onUpdateEnergy(level) }
+                }
+            }
+            StateCategory.SOCIAL -> {
+                SocialBattery.values().forEach { battery ->
+                    EditorOption(battery.name, journal?.socialBattery == battery) { onUpdateSocial(battery) }
+                }
+            }
+            StateCategory.FOCUS -> {
+                FocusLevel.values().forEach { level ->
+                    EditorOption(level.name, journal?.focusLevel == level) { onUpdateFocus(level) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditorOption(label: String, isSelected: Boolean, onClick: () -> Unit) {
+    val haptic = LocalHapticFeedback.current
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isSelected) Accent else DarkSurface)
+            .clickable { 
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick() 
+            }
+            .padding(20.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (isSelected) DarkBackground else TextSecondary
+            text = label.replace("_", " "),
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (isSelected) DarkBackground else TextPrimary,
+            fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold
         )
     }
 }

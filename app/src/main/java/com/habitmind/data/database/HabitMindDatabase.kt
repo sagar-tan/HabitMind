@@ -12,13 +12,6 @@ import com.habitmind.data.database.dao.HabitDao
 import com.habitmind.data.database.dao.JournalDao
 import com.habitmind.data.database.dao.TaskDao
 import com.habitmind.data.database.entity.*
-import com.habitmind.data.database.entity.Goal
-import com.habitmind.data.database.entity.GoalUpdate
-import com.habitmind.data.database.entity.Habit
-import com.habitmind.data.database.entity.HabitCompletion
-import com.habitmind.data.database.entity.HabitImage
-import com.habitmind.data.database.entity.JournalEntry
-import com.habitmind.data.database.entity.Task
 
 /**
  * HabitMind Room Database
@@ -42,9 +35,10 @@ import com.habitmind.data.database.entity.Task
         ActionFix::class,
         TomorrowPriority::class,
         DomainCheckin::class,
-        DomainFlag::class
+        DomainFlag::class,
+        SyncDeletion::class
     ],
-    version = 6,
+    version = 8,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

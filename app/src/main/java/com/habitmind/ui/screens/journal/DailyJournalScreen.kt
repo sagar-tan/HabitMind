@@ -24,7 +24,7 @@ import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.rounded.Smartphone
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,6 +43,7 @@ import com.habitmind.ui.theme.*
 import com.habitmind.ui.viewmodel.DailyJournalViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.flow.*
 
 // Time utilities for Metric Conversion
 private fun floatToTime(value: Float): Pair<Int, Int> {
@@ -132,6 +133,7 @@ fun DailyJournalScreen(
             item {
                 CollapsibleSection(title = "Diagnostics") {
                     DiagnosticsSection(
+                        journalId = uiState.journal?.id ?: 0,
                         diagnostics = uiState.diagnostics,
                         onToggle = { vm.toggleDiagnostic(it) }
                     )
@@ -344,7 +346,7 @@ private fun DailySnapshotSection(
         MetricCard(
             label = "Screen",
             value = journal.screenTimeHours,
-            icon = Icons.Rounded.Smartphone,
+            icon = Icons.Rounded.PhoneAndroid,
             modifier = Modifier.weight(1f),
             onClick = { 
                 editingMetric = "Screen Time" to journal.screenTimeHours
@@ -460,19 +462,20 @@ private fun MetricEditDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     if (isManual) {
-                        var editH by remember { mutableStateOf(h.toString()) }
-                        var editM by remember { mutableStateOf(m.toString()) }
+                        var editH by remember { mutableStateOf("%02d".format(h)) }
+                        var editM by remember { mutableStateOf("%02d".format(m)) }
                         
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             BasicTextField(
                                 value = editH,
                                 onValueChange = { 
-                                    if (it.length <= 2) {
+                                    if (it.length <= 2 && it.all { c -> c.isDigit() }) {
                                         editH = it
-                                        currentValue = timeToFloat(it.toIntOrNull() ?: 0, m)
+                                        val valH = it.toIntOrNull() ?: 0
+                                        currentValue = timeToFloat(valH, m)
                                     }
                                 },
-                                modifier = Modifier.width(60.dp).background(DarkSurface, RoundedCornerShape(12.dp)).padding(vertical = 12.dp),
+                                modifier = Modifier.width(64.dp).background(DarkSurface, RoundedCornerShape(12.dp)).padding(vertical = 12.dp),
                                 textStyle = MaterialTheme.typography.headlineMedium.copy(color = TextPrimary, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold),
                                 keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                                 cursorBrush = SolidColor(Accent)
@@ -481,12 +484,13 @@ private fun MetricEditDialog(
                             BasicTextField(
                                 value = editM,
                                 onValueChange = { 
-                                    if (it.length <= 2) {
+                                    if (it.length <= 2 && it.all { c -> c.isDigit() }) {
                                         editM = it
-                                        currentValue = timeToFloat(h, it.toIntOrNull() ?: 0)
+                                        val valM = it.toIntOrNull() ?: 0
+                                        currentValue = timeToFloat(h, valM)
                                     }
                                 },
-                                modifier = Modifier.width(60.dp).background(DarkSurface, RoundedCornerShape(12.dp)).padding(vertical = 12.dp),
+                                modifier = Modifier.width(64.dp).background(DarkSurface, RoundedCornerShape(12.dp)).padding(vertical = 12.dp),
                                 textStyle = MaterialTheme.typography.headlineMedium.copy(color = TextPrimary, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold),
                                 keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                                 cursorBrush = SolidColor(Accent)
@@ -538,10 +542,9 @@ private fun VerticalWheelPicker(
     step: Int = 1
 ) {
     val items = remember(range, step) { range.filter { it % step == 0 } }
-    val virtualCount = 10000 // Large multiple for infinite feel
+    val virtualCount = 1000 // Infinite feel
     val totalVirtualItems = items.size * virtualCount
     
-    // Find initial index in the middle of the virtual range
     val initialRealIndex = items.indexOfFirst { it >= selectedValue }.coerceAtLeast(0)
     val initialVirtualIndex = (totalVirtualItems / 2) - ((totalVirtualItems / 2) % items.size) + initialRealIndex
     
@@ -549,25 +552,27 @@ private fun VerticalWheelPicker(
     val snapFlingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     
-    // Track center item
-    val centerIndex by remember {
-        derivedStateOf { 
-            val layoutInfo = listState.layoutInfo
-            val visibleItemsInfo = layoutInfo.visibleItemsInfo
-            if (visibleItemsInfo.isEmpty()) 0
-            else {
-                val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
-                visibleItemsInfo.minByOrNull { kotlin.math.abs((it.offset + it.size / 2) - viewportCenter) }?.index ?: 0
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .map { _: Int -> 
+                val layoutInfo = listState.layoutInfo
+                val visibleItems = layoutInfo.visibleItemsInfo
+                if (visibleItems.isEmpty()) 0
+                else {
+                    val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
+                    visibleItems.minByOrNull { kotlin.math.abs((it.offset + it.size / 2) - viewportCenter) }?.index ?: 0
+                }
             }
-        }
-    }
-    
-    LaunchedEffect(centerIndex) {
-        val realIndex = centerIndex % items.size
-        if (realIndex in items.indices) {
-            onValueSelected(items[realIndex])
-            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-        }
+            .distinctUntilChanged()
+            .collect { centerIndex: Int ->
+                val realIndex = centerIndex % items.size
+                if (realIndex in items.indices) {
+                    onValueSelected(items[realIndex])
+                    try {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                    } catch (_: Exception) {}
+                }
+            }
     }
 
     LazyColumn(
@@ -587,11 +592,13 @@ private fun VerticalWheelPicker(
                     .graphicsLayer {
                         val layoutInfo = listState.layoutInfo
                         val visibleItem = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
-                        if (visibleItem != null) {
+                        val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+                        
+                        if (visibleItem != null && viewportHeight > 0) {
                             val viewportCenter = (layoutInfo.viewportEndOffset + layoutInfo.viewportStartOffset) / 2f
                             val itemCenter = visibleItem.offset + visibleItem.size / 2f
                             val distance = itemCenter - viewportCenter
-                            val fraction = (distance / (layoutInfo.viewportEndOffset / 2f)).coerceIn(-1f, 1f)
+                            val fraction = (distance / (viewportHeight / 2f)).coerceIn(-1f, 1f)
                             
                             rotationX = -fraction * 60f
                             scaleX = 1f - kotlin.math.abs(fraction) * 0.2f
@@ -714,6 +721,7 @@ private fun TimelineSection(
 
 @Composable
 private fun DiagnosticsSection(
+    journalId: Long,
     diagnostics: List<BehaviorDiagnostic>,
     onToggle: (BehaviorDiagnostic) -> Unit
 ) {
@@ -721,7 +729,7 @@ private fun DiagnosticsSection(
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
         categories.forEach { category ->
             Text(category.name, style = MaterialTheme.typography.labelSmall, color = Accent)
-            // Simplified diagnostics - usually we'd have a fixed list of keys per category
+            
             val keys = when(category) {
                 DiagnosticCategory.COGNITIVE -> listOf("Brain Fog", "Overthought", "Indecisive")
                 DiagnosticCategory.EMOTIONAL -> listOf("Anxious", "Irritable", "Low Mood")
@@ -730,19 +738,26 @@ private fun DiagnosticsSection(
             }
             
             keys.forEach { key ->
-                val diag = diagnostics.find { it.category == category && it.key == key } ?: BehaviorDiagnostic(journalId = 0, category = category, key = key)
+                val diag = diagnostics.find { it.category == category && it.key == key } 
+                    ?: BehaviorDiagnostic(journalId = journalId, category = category, key = key)
+                
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onToggle(diag) },
+                        .clickable { if (journalId > 0) onToggle(diag) },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(
                         checked = diag.isChecked,
-                        onCheckedChange = { onToggle(diag) },
-                        colors = CheckboxDefaults.colors(checkedColor = Accent)
+                        onCheckedChange = { if (journalId > 0) onToggle(diag) },
+                        colors = CheckboxDefaults.colors(checkedColor = Accent),
+                        enabled = journalId > 0
                     )
-                    Text(key, color = TextPrimary, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = key, 
+                        color = if (journalId > 0) TextPrimary else TextMuted, 
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
         }

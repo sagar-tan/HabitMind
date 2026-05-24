@@ -27,8 +27,13 @@ data class JournalEntry(
     val mediaDurationSeconds: Int? = null, // For voice notes
     val timestamp: LocalDateTime = LocalDateTime.now(),
     val tags: String = "", // Comma-separated tags
-    val mood: Int? = null // 1-5 mood rating, optional
-)
+    val mood: Int? = null, // 1-5 mood rating, optional
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity
 
 /**
  * Daily log / quick note entity
@@ -39,5 +44,10 @@ data class DailyLog(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val content: String,
-    val timestamp: LocalDateTime = LocalDateTime.now()
-)
+    val timestamp: LocalDateTime = LocalDateTime.now(),
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity

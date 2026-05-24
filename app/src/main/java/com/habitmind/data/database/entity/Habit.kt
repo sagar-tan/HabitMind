@@ -19,8 +19,13 @@ data class Habit(
     val isArchived: Boolean = false,
     val reminderTime: String? = null, // HH:mm format
     val color: String = "#E8E8EC", // Accent color hex
-    val isNegative: Boolean = false // If true, completion is "avoidance" (bad thing avoided)
-)
+    val isNegative: Boolean = false, // If true, completion is "avoidance" (bad thing avoided)
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity
 
 /**
  * Habit completion record
@@ -34,5 +39,10 @@ data class HabitCompletion(
     val habitId: Long,
     val date: LocalDate,
     val isCompleted: Boolean = true,
-    val completedAt: LocalDateTime? = null
-)
+    val completedAt: LocalDateTime? = null,
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity

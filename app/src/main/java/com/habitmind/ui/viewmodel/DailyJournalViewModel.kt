@@ -151,6 +151,7 @@ class DailyJournalViewModel(application: Application) : AndroidViewModel(applica
     }
 
     fun toggleDiagnostic(diagnostic: BehaviorDiagnostic) {
+        if (diagnostic.journalId <= 0) return
         viewModelScope.launch {
             repository.saveDiagnostic(diagnostic.copy(isChecked = !diagnostic.isChecked))
         }

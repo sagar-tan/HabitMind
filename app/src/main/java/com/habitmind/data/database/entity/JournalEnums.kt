@@ -108,3 +108,12 @@ enum class DiagnosticCategory {
     BEHAVIORAL,
     ENERGY
 }
+
+/**
+ * Focus status for state tracking
+ */
+enum class FocusLevel {
+    SCATTERED,
+    OKAY,
+    LOCKED_IN
+}

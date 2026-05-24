@@ -23,6 +23,9 @@ class UserPreferencesDataStore(private val context: Context) {
         private val HAS_COMPLETED_ONBOARDING_KEY = booleanPreferencesKey("has_completed_onboarding")
         private val DARK_MODE_KEY = booleanPreferencesKey("dark_mode")
         private val NOTIFICATIONS_ENABLED_KEY = booleanPreferencesKey("notifications_enabled")
+        private val SYNC_SERVER_URL_KEY = stringPreferencesKey("sync_server_url")
+        private val SYNC_AUTH_TOKEN_KEY = stringPreferencesKey("sync_auth_token")
+        private val AUTO_SYNC_ENABLED_KEY = booleanPreferencesKey("auto_sync_enabled")
     }
     
     // User name
@@ -66,6 +69,39 @@ class UserPreferencesDataStore(private val context: Context) {
     suspend fun setNotificationsEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[NOTIFICATIONS_ENABLED_KEY] = enabled
+        }
+    }
+
+    // Sync server URL
+    val syncServerUrl: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[SYNC_SERVER_URL_KEY] ?: ""
+    }
+
+    suspend fun setSyncServerUrl(url: String) {
+        context.dataStore.edit { preferences ->
+            preferences[SYNC_SERVER_URL_KEY] = url
+        }
+    }
+
+    // Sync auth token
+    val syncAuthToken: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[SYNC_AUTH_TOKEN_KEY] ?: ""
+    }
+
+    suspend fun setSyncAuthToken(token: String) {
+        context.dataStore.edit { preferences ->
+            preferences[SYNC_AUTH_TOKEN_KEY] = token
+        }
+    }
+
+    // Auto sync toggle
+    val autoSyncEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[AUTO_SYNC_ENABLED_KEY] ?: false
+    }
+
+    suspend fun setAutoSyncEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[AUTO_SYNC_ENABLED_KEY] = enabled
         }
     }
 }

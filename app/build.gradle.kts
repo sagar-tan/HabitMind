@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.habitmind"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -85,6 +85,9 @@ dependencies {
 
     // Coil (image loading)
     implementation(libs.coil.compose)
+
+    // Health Connect
+    implementation(libs.androidx.health.connect)
 
     // Testing
     testImplementation(libs.junit)

@@ -3,6 +3,9 @@ package com.habitmind
 import android.app.Application
 import com.habitmind.data.database.HabitMindDatabase
 import com.habitmind.data.datastore.UserPreferencesDataStore
+import com.habitmind.data.manager.DataGatheringManager
+import com.habitmind.data.manager.AppUsageTracker
+import com.habitmind.data.sync.DataSyncManager
 import com.habitmind.data.repository.DailyJournalRepository
 import com.habitmind.data.repository.DailyTrackerRepository
 import com.habitmind.data.repository.GoalRepository
@@ -24,6 +27,11 @@ class HabitMindApplication : Application() {
     // DataStore
     val userPreferences: UserPreferencesDataStore by lazy { UserPreferencesDataStore(this) }
     
+    // Managers
+    val dataGatheringManager: DataGatheringManager by lazy { DataGatheringManager(this) }
+    val appUsageTracker: AppUsageTracker by lazy { AppUsageTracker(this) }
+    val dataSyncManager: DataSyncManager by lazy { DataSyncManager(this) }
+    
     // Repositories
     val habitRepository: HabitRepository by lazy { HabitRepository(database.habitDao()) }
     val taskRepository: TaskRepository by lazy { TaskRepository(database.taskDao()) }
@@ -42,4 +50,3 @@ class HabitMindApplication : Application() {
         NotificationScheduler.initializeNotifications(this)
     }
 }
-

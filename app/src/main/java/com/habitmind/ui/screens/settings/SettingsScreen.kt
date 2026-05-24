@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.DarkMode
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -42,6 +44,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -66,6 +70,9 @@ import com.habitmind.HabitMindApplication
 import com.habitmind.data.export.DataExportManager
 import com.habitmind.data.export.ExportResult
 import com.habitmind.data.media.MediaStorageHelper
+import com.habitmind.data.sync.DataSyncManager
+import com.habitmind.data.sync.ServerFile
+import com.habitmind.data.sync.SyncResult
 import com.habitmind.notification.NotificationScheduler
 import com.habitmind.ui.theme.Accent
 import com.habitmind.ui.theme.CardBackground
@@ -101,8 +108,23 @@ fun SettingsScreen(
     var exportStatus by remember { mutableStateOf<String?>(null) }
     var isExporting by remember { mutableStateOf(false) }
     
+    // Sync state
+    var showSyncDialog by remember { mutableStateOf(false) }
+    var showSyncConfigDialog by remember { mutableStateOf(false) }
+    var showDownloadDialog by remember { mutableStateOf(false) }
+    var syncStatus by remember { mutableStateOf<String?>(null) }
+    var isSyncing by remember { mutableStateOf(false) }
+    var isDownloadingList by remember { mutableStateOf(false) }
+    var serverFiles by remember { mutableStateOf<List<ServerFile>>(emptyList()) }
+    var downloadedContent by remember { mutableStateOf<String?>(null) }
+    
+    val syncServerUrl by preferences.syncServerUrl.collectAsState(initial = "")
+    val syncAuthToken by preferences.syncAuthToken.collectAsState(initial = "")
+    val autoSyncEnabled by preferences.autoSyncEnabled.collectAsState(initial = false)
+    
     val mediaHelper = remember { MediaStorageHelper(context) }
     val exportManager = remember { DataExportManager(context) }
+    val syncManager = remember { DataSyncManager(context) }
     
     val storageUsed = remember { mediaHelper.formatStorageSize(mediaHelper.getTotalStorageUsed()) }
     
@@ -212,6 +234,14 @@ fun SettingsScreen(
                 )
                 
                 SettingsItem(
+                    icon = Icons.Outlined.Sync,
+                    title = "Usage Data Sync",
+                    subtitle = if (syncServerUrl.isNotBlank()) "Configured" else "Not configured",
+                    tint = if (syncServerUrl.isNotBlank()) Success else Accent,
+                    onClick = { showSyncDialog = true }
+                )
+                
+                SettingsItem(
                     icon = Icons.Outlined.Delete,
                     title = "Delete All Data",
                     subtitle = "Permanently remove all data",
@@ -309,6 +339,243 @@ fun SettingsScreen(
         )
     }
     
+    // Sync Dialog
+    if (showSyncDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isSyncing) showSyncDialog = false },
+            title = { Text("Usage Data Sync", color = TextPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                    Text(
+                        "Upload your app usage stats to your personal server. Data stays private.",
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+
+                    if (syncStatus != null) {
+                        Text(
+                            syncStatus!!,
+                            color = if (syncStatus!!.startsWith("Uploaded") || syncStatus!!.startsWith("Downloaded")) Success else Warning,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    if (isSyncing || isDownloadingList) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Accent)
+                            Text(
+                                if (isSyncing) "Uploading..." else "Fetching files...",
+                                color = TextSecondary,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+
+                    if (syncServerUrl.isBlank()) {
+                        Text("No server configured.", color = Warning, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    TextButton(onClick = { showSyncConfigDialog = true }) {
+                        Text("Configure", color = Accent)
+                    }
+                    if (syncServerUrl.isNotBlank()) {
+                        TextButton(
+                            onClick = {
+                                isSyncing = true
+                                syncStatus = null
+                                scope.launch {
+                                    val result = syncManager.uploadUsageData(syncServerUrl, syncAuthToken.ifBlank { null })
+                                    syncStatus = when (result) {
+                                        is SyncResult.Success -> result.message
+                                        is SyncResult.Error -> result.message
+                                    }
+                                    isSyncing = false
+                                }
+                            },
+                            enabled = !isSyncing
+                        ) { Text("Upload Now", color = Accent) }
+                    }
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    if (syncServerUrl.isNotBlank()) {
+                        TextButton(onClick = {
+                            isDownloadingList = true
+                            syncStatus = null
+                            scope.launch {
+                                serverFiles = syncManager.fetchDataList(syncServerUrl)
+                                isDownloadingList = false
+                                if (serverFiles.isEmpty()) {
+                                    syncStatus = "No files on server"
+                                } else {
+                                    showDownloadDialog = true
+                                }
+                            }
+                        }) { Text("Download", color = Accent) }
+                    }
+                    TextButton(onClick = {
+                        showSyncDialog = false
+                        syncStatus = null
+                    }) { Text("Close") }
+                }
+            },
+            containerColor = GlassSurface
+        )
+    }
+
+    // Sync Config Dialog
+    if (showSyncConfigDialog) {
+        var urlInput by remember(syncServerUrl) { mutableStateOf(syncServerUrl) }
+        var tokenInput by remember(syncAuthToken) { mutableStateOf(syncAuthToken) }
+
+        AlertDialog(
+            onDismissRequest = { showSyncConfigDialog = false },
+            title = { Text("Server Configuration", color = TextPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                    Text(
+                        "Enter the URL of your personal usage server. You can self-host the server from the usage-server/ directory.",
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+
+                    OutlinedTextField(
+                        value = urlInput,
+                        onValueChange = { urlInput = it },
+                        label = { Text("Server URL") },
+                        placeholder = { Text("https://your-server.com") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedBorderColor = Accent,
+                            unfocusedBorderColor = GlassBorder,
+                            focusedLabelColor = Accent,
+                            unfocusedLabelColor = TextMuted,
+                            cursorColor = Accent
+                        )
+                    )
+
+                    OutlinedTextField(
+                        value = tokenInput,
+                        onValueChange = { tokenInput = it },
+                        label = { Text("Auth Token (optional)") },
+                        placeholder = { Text("Leave blank if no auth") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedBorderColor = Accent,
+                            unfocusedBorderColor = GlassBorder,
+                            focusedLabelColor = Accent,
+                            unfocusedLabelColor = TextMuted,
+                            cursorColor = Accent
+                        )
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Auto-sync on launch", color = TextPrimary, style = MaterialTheme.typography.bodyMedium)
+                        Switch(
+                            checked = autoSyncEnabled,
+                            onCheckedChange = { scope.launch { preferences.setAutoSyncEnabled(it) } },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = OnAccent,
+                                checkedTrackColor = Accent,
+                                uncheckedThumbColor = TextMuted,
+                                uncheckedTrackColor = CardBackground
+                            )
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            preferences.setSyncServerUrl(urlInput.trim())
+                            preferences.setSyncAuthToken(tokenInput.trim())
+                        }
+                        showSyncConfigDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Accent)
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSyncConfigDialog = false }) { Text("Cancel") }
+            },
+            containerColor = GlassSurface
+        )
+    }
+
+    // Download Dialog
+    if (showDownloadDialog) {
+        AlertDialog(
+            onDismissRequest = { showDownloadDialog = false },
+            title = { Text("Download Usage Data", color = TextPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    if (serverFiles.isEmpty()) {
+                        Text("No files available.", color = TextMuted)
+                    } else {
+                        serverFiles.take(10).forEach { file ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        scope.launch {
+                                            val content = syncManager.downloadData(syncServerUrl, file.filename)
+                                            if (content != null) {
+                                                downloadedContent = content
+                                                syncStatus = "Downloaded: ${file.filename}"
+                                            } else {
+                                                syncStatus = "Download failed"
+                                            }
+                                        }
+                                    }
+                                    .padding(vertical = Spacing.sm),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(file.filename, color = TextPrimary, style = MaterialTheme.typography.bodySmall)
+                                    Text(
+                                        "${file.size / 1024} KB",
+                                        color = TextMuted,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                                Icon(
+                                    Icons.Outlined.CloudDownload,
+                                    contentDescription = "Download",
+                                    tint = Accent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        if (serverFiles.size > 10) {
+                            Text("+ ${serverFiles.size - 10} more files", color = TextMuted, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDownloadDialog = false }) { Text("Close") }
+            },
+            containerColor = GlassSurface
+        )
+    }
+
     // Delete Data Dialog
     if (showDeleteDataDialog) {
         AlertDialog(

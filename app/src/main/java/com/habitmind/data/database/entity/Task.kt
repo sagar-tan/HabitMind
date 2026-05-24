@@ -22,5 +22,10 @@ data class Task(
     val originalDate: LocalDate? = null, // If carried forward, original date
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val completedAt: LocalDateTime? = null,
-    val priority: Int = 0 // 0=normal, 1=high, 2=urgent
-)
+    val priority: Int = 0, // 0=normal, 1=high, 2=urgent
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity

@@ -19,8 +19,13 @@ data class Goal(
     val progressPercent: Int = 0, // 0-100
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val isCompleted: Boolean = false,
-    val completedAt: LocalDateTime? = null
-)
+    val completedAt: LocalDateTime? = null,
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity
 
 /**
  * Goal progress update
@@ -35,5 +40,10 @@ data class GoalUpdate(
     val weekStart: LocalDate, // Monday of the week
     val progressDelta: Int = 0, // Change in progress
     val notes: String = "",
-    val createdAt: LocalDateTime = LocalDateTime.now()
-)
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity

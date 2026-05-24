@@ -86,4 +86,7 @@ class Converters {
 
     @TypeConverter fun fromDiagnosticCategory(v: DiagnosticCategory) = v.name
     @TypeConverter fun toDiagnosticCategory(v: String) = DiagnosticCategory.valueOf(v)
+
+    @TypeConverter fun fromFocusLevel(v: FocusLevel) = v.name
+    @TypeConverter fun toFocusLevel(v: String) = FocusLevel.valueOf(v)
 }

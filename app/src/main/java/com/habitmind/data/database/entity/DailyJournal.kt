@@ -19,7 +19,6 @@ data class DailyJournal(
     val id: Long = 0,
     val date: LocalDate = LocalDate.now(),
     val createdAt: LocalDateTime = LocalDateTime.now(),
-    val updatedAt: LocalDateTime = LocalDateTime.now(),
     val mode: JournalMode = JournalMode.FULL,
     
     // Quantitative Stats
@@ -30,7 +29,13 @@ data class DailyJournal(
     val workoutDurationMin: Int = 0,
     val deepWorkHours: Float = 0f,
     val screenTimeHours: Float = 0f,
+    val steps: Long = 0L,
+    val hydrationLiters: Float = 0f,
+    
+    // Operational State
+    val energyLevel: EnergyLevel = EnergyLevel.STABLE,
     val socialBattery: SocialBattery = SocialBattery.MODERATE,
+    val focusLevel: FocusLevel = FocusLevel.OKAY,
     
     // Highlights & Reflections
     val bestPart: String = "",
@@ -48,8 +53,13 @@ data class DailyJournal(
     // Growth
     val dailyLesson: String = "",
     val identityAlignment: IdentityAlignment = IdentityAlignment.MOSTLY,
-    val isComplete: Boolean = false
-)
+    val isComplete: Boolean = false,
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity
 
 /**
  * Morning / Afternoon / Evening snapshots
@@ -71,8 +81,13 @@ data class JournalStateSlice(
     val period: DayPeriod,
     val energy: EnergyLevel = EnergyLevel.NEUTRAL,
     val mood: MoodState = MoodState.GOOD,
-    val stress: StressLevel = StressLevel.LOW
-)
+    val stress: StressLevel = StressLevel.LOW,
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity
 
 /**
  * Timeline bullets for the day
@@ -94,8 +109,13 @@ data class JournalEvent(
     val id: Long = 0,
     val journalId: Long,
     val position: Int,
-    val text: String
-)
+    val text: String,
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity
 
 /**
  * Category-based behavior diagnostics
@@ -118,8 +138,13 @@ data class BehaviorDiagnostic(
     val journalId: Long,
     val category: DiagnosticCategory,
     val key: String,
-    val isChecked: Boolean = false
-)
+    val isChecked: Boolean = false,
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity
 
 /**
  * Problem -> Fix pairs
@@ -142,8 +167,13 @@ data class ActionFix(
     val journalId: Long,
     val problem: String,
     val fix: String,
-    val position: Int
-)
+    val position: Int,
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity
 
 /**
  * Top 3 priorities for tomorrow
@@ -165,8 +195,13 @@ data class TomorrowPriority(
     val id: Long = 0,
     val journalId: Long,
     val slot: Int, // 1, 2, or 3
-    val text: String
-)
+    val text: String,
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity
 
 /**
  * Reusable domain check-in record
@@ -182,8 +217,13 @@ data class DomainCheckin(
     val domain: LifeDomain,
     val promptAnswer: String = "",
     val summaryValue: String = "",
-    val notes: String = ""
-)
+    val notes: String = "",
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity
 
 /**
  * Tags or flags attached to a domain check-in
@@ -205,5 +245,10 @@ data class DomainFlag(
     val id: Long = 0,
     val checkinId: Long,
     val key: String,
-    val isChecked: Boolean = false
-)
+    val isChecked: Boolean = false,
+    
+    // Sync Metadata
+    override val remoteId: String? = null,
+    override val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    override val updatedAt: LocalDateTime = LocalDateTime.now()
+) : SyncableEntity
