@@ -66,8 +66,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import android.content.Intent
 import com.habitmind.HabitMindApplication
 import com.habitmind.data.export.DataExportManager
+import com.habitmind.data.manager.AppUsageTracker
 import com.habitmind.data.export.ExportResult
 import com.habitmind.data.media.MediaStorageHelper
 import com.habitmind.data.sync.DataSyncManager
@@ -112,6 +114,7 @@ fun SettingsScreen(
     var showSyncDialog by remember { mutableStateOf(false) }
     var showSyncConfigDialog by remember { mutableStateOf(false) }
     var showDownloadDialog by remember { mutableStateOf(false) }
+    var showUsagePermissionDialog by remember { mutableStateOf(false) }
     var syncStatus by remember { mutableStateOf<String?>(null) }
     var isSyncing by remember { mutableStateOf(false) }
     var isDownloadingList by remember { mutableStateOf(false) }
@@ -125,6 +128,7 @@ fun SettingsScreen(
     val mediaHelper = remember { MediaStorageHelper(context) }
     val exportManager = remember { DataExportManager(context) }
     val syncManager = remember { DataSyncManager(context) }
+    val usageTracker = remember { AppUsageTracker(context) }
     
     val storageUsed = remember { mediaHelper.formatStorageSize(mediaHelper.getTotalStorageUsed()) }
     
@@ -387,15 +391,20 @@ fun SettingsScreen(
                     if (syncServerUrl.isNotBlank()) {
                         TextButton(
                             onClick = {
-                                isSyncing = true
-                                syncStatus = null
-                                scope.launch {
-                                    val result = syncManager.uploadUsageData(syncServerUrl, syncAuthToken.ifBlank { null })
-                                    syncStatus = when (result) {
-                                        is SyncResult.Success -> result.message
-                                        is SyncResult.Error -> result.message
+                                if (!usageTracker.hasUsagePermission()) {
+                                    syncStatus = "Permission required"
+                                    showUsagePermissionDialog = true
+                                } else {
+                                    isSyncing = true
+                                    syncStatus = null
+                                    scope.launch {
+                                        val result = syncManager.uploadUsageData(syncServerUrl, syncAuthToken.ifBlank { null })
+                                        syncStatus = when (result) {
+                                            is SyncResult.Success -> result.message
+                                            is SyncResult.Error -> result.message
+                                        }
+                                        isSyncing = false
                                     }
-                                    isSyncing = false
                                 }
                             },
                             enabled = !isSyncing
@@ -571,6 +580,47 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showDownloadDialog = false }) { Text("Close") }
+            },
+            containerColor = GlassSurface
+        )
+    }
+
+    // Usage Access Permission Dialog
+    if (showUsagePermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showUsagePermissionDialog = false },
+            title = { Text("Usage Access Required", color = Warning) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                    Text(
+                        "Android requires you to manually grant app usage access. This lets HabitMind see which apps you use and for how long.",
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "No app content is ever read — only package names and screen time.",
+                        color = TextMuted,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showUsagePermissionDialog = false
+                        context.startActivity(
+                            Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Accent)
+                ) { Text("Open Settings") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUsagePermissionDialog = false }) {
+                    Text("Cancel")
+                }
             },
             containerColor = GlassSurface
         )
