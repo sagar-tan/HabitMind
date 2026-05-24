@@ -215,17 +215,31 @@ function switchTab(name) {
 }
 
 async function refreshFiles() {
-    allFiles = await api('/api/data');
-    [document.getElementById('fileSelect'), document.getElementById('tlFileSelect')].forEach(sel => {
-        sel.innerHTML = '<option value="">Latest upload</option>';
-        allFiles.forEach(f => {
-            const o=document.createElement('option'); o.value=f.filename;
-            o.textContent=f.filename.replace(/\.json$/,'').split('_').slice(1).join('_')||f.filename;
-            sel.appendChild(o);
+    try {
+        allFiles = await api('/api/data');
+        [document.getElementById('fileSelect'), document.getElementById('tlFileSelect')].forEach(sel => {
+            sel.innerHTML = '<option value="">Latest upload</option>';
+            allFiles.forEach(f => {
+                const o=document.createElement('option'); o.value=f.filename;
+                o.textContent=f.filename.replace(/\.json$/,'').split('_').slice(1).join('_')||f.filename;
+                sel.appendChild(o);
+            });
         });
-    });
-    if (allFiles.length > 0) { loadFile(''); loadTimeline(''); }
-    else { document.getElementById('appsContent').innerHTML='<div class="empty">No data yet</div>'; }
+        if (allFiles.length > 0) {
+            loadFile('');
+            loadTimeline('');
+        } else {
+            document.getElementById('subtitle').textContent = 'No uploads yet';
+            document.getElementById('stats').innerHTML = '';
+            document.getElementById('tlStats').innerHTML = '';
+            document.getElementById('appsContent').innerHTML = '<div class="empty">No usage uploads yet. Open the app, grant the permissions, and relaunch once so it syncs.</div>';
+            document.getElementById('timelineContent').innerHTML = '<div class="empty">No timeline data yet.</div>';
+        }
+    } catch (e) {
+        document.getElementById('subtitle').textContent = 'Failed to load server data';
+        document.getElementById('appsContent').innerHTML = '<div class="empty">Error loading uploads.</div>';
+        document.getElementById('timelineContent').innerHTML = '<div class="empty">Error loading uploads.</div>';
+    }
 }
 
 async function loadFile(filename) {
