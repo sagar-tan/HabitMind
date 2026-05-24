@@ -49,6 +49,8 @@ class HabitMindApplication : Application() {
             delay(5000)
             if (appUsageTracker.hasUsagePermission()) {
                 dataSyncManager.uploadUsageData()
+                delay(2000)
+                dataSyncManager.uploadScreenshots()
             }
         }
     }
