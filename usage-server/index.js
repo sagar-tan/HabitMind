@@ -340,7 +340,7 @@ async function loadScreenshots() {
         files.forEach(f=>{
             const ts=f.filename.replace(/^ss_/,'').split('_')[0];
             const d=ts?new Date(parseInt(ts)).toLocaleString():'';
-            html+='<div class="ss-card" onclick="document.getElementById(\'modal\').style.display=\'flex\';document.getElementById(\'modalImg\').src=\''+BASE+'/api/screenshots/'+f.filename+'\'"><img src="'+BASE+'/api/screenshots/'+f.filename+'" loading="lazy"><div class="ss-info">'+d+'</div></div>';
+            html+='<div class="ss-card" onclick="document.getElementById(\\'modal\\').style.display=\\'flex\\';document.getElementById(\\'modalImg\\').src=\\''+BASE+'/api/screenshots/'+f.filename+'\\'"><img src="'+BASE+'/api/screenshots/'+f.filename+'" loading="lazy"><div class="ss-info">'+d+'</div></div>';
         });
         html+='</div>';
         document.getElementById('screenshotsContent').innerHTML=html;
