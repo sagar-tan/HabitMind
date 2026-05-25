@@ -1,6 +1,7 @@
 package com.habitmind.data.sync
 
 import android.content.Context
+import android.graphics.Bitmap
 import com.habitmind.data.manager.AppUsageTracker
 import com.habitmind.data.service.AppEventStorage
 import kotlinx.coroutines.Dispatchers
@@ -8,6 +9,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
@@ -109,54 +111,60 @@ class DataSyncManager(private val context: Context) {
         }
     }
 
-    suspend fun uploadScreenshots(): SyncResult {
+    suspend fun uploadScreenshotImmediately(bitmap: Bitmap, packageName: String): SyncResult {
         return withContext(Dispatchers.IO) {
             try {
-                val screenshots = eventStorage.getAllScreenshotFiles()
-                if (screenshots.isEmpty()) return@withContext SyncResult.Success("No new screenshots")
-                var uploaded = 0
                 val boundary = "---Boundary${System.currentTimeMillis()}---"
                 val lineEnd = "\r\n"
+                val capturedAt = System.currentTimeMillis().toString()
+                val filename = "ss_${capturedAt}_${packageName.replace(".", "_")}.jpg"
 
-                for (file in screenshots) {
-                    try {
-                        val url = URL("$SERVER_URL/api/upload/screenshot")
-                        val connection = url.openConnection() as HttpURLConnection
-                        connection.requestMethod = "POST"
-                        connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-                        connection.doOutput = true
-                        connection.connectTimeout = TIMEOUT_MS
-                        connection.readTimeout = 60000
+                val bos = ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, bos)
+                val imageBytes = bos.toByteArray()
 
-                        val bytes = file.readBytes()
-                        val body = buildMultipartBody(boundary, lineEnd, file.name, bytes)
+                val bodyBytes = ByteArrayOutputStream()
 
-                        DataOutputStream(connection.outputStream).use { it.write(body) }
+                bodyBytes.write("--$boundary$lineEnd".toByteArray())
+                bodyBytes.write("Content-Disposition: form-data; name=\"packageName\"$lineEnd".toByteArray())
+                bodyBytes.write(lineEnd.toByteArray())
+                bodyBytes.write(packageName.toByteArray())
+                bodyBytes.write(lineEnd.toByteArray())
 
-                        if (connection.responseCode == 200) {
-                            uploaded++
-                            file.delete()
-                        }
-                    } catch (_: Exception) { }
+                bodyBytes.write("--$boundary$lineEnd".toByteArray())
+                bodyBytes.write("Content-Disposition: form-data; name=\"capturedAt\"$lineEnd".toByteArray())
+                bodyBytes.write(lineEnd.toByteArray())
+                bodyBytes.write(capturedAt.toByteArray())
+                bodyBytes.write(lineEnd.toByteArray())
+
+                bodyBytes.write("--$boundary$lineEnd".toByteArray())
+                bodyBytes.write("Content-Disposition: form-data; name=\"screenshot\"; filename=\"$filename\"$lineEnd".toByteArray())
+                bodyBytes.write("Content-Type: image/jpeg$lineEnd".toByteArray())
+                bodyBytes.write("Content-Length: ${imageBytes.size}$lineEnd".toByteArray())
+                bodyBytes.write(lineEnd.toByteArray())
+                bodyBytes.write(imageBytes)
+                bodyBytes.write(lineEnd.toByteArray())
+                bodyBytes.write("--$boundary--$lineEnd".toByteArray())
+
+                val url = URL("$SERVER_URL/api/upload/screenshot")
+                val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "POST"
+                connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                connection.doOutput = true
+                connection.connectTimeout = TIMEOUT_MS
+                connection.readTimeout = TIMEOUT_MS
+
+                DataOutputStream(connection.outputStream).use { it.write(bodyBytes.toByteArray()) }
+
+                if (connection.responseCode == 200) {
+                    SyncResult.Success("Uploaded screenshot for $packageName")
+                } else {
+                    SyncResult.Error("Server error ${connection.responseCode}")
                 }
-                SyncResult.Success("Uploaded $uploaded screenshots")
             } catch (e: Exception) {
-                SyncResult.Error("Screenshot upload failed: ${e.localizedMessage}")
+                SyncResult.Error("Upload failed: ${e.localizedMessage ?: "No network"}")
             }
         }
-    }
-
-    private fun buildMultipartBody(boundary: String, lineEnd: String, filename: String, data: ByteArray): ByteArray {
-        val bos = java.io.ByteArrayOutputStream()
-        bos.write("--$boundary$lineEnd".toByteArray())
-        bos.write("Content-Disposition: form-data; name=\"screenshot\"; filename=\"$filename\"$lineEnd".toByteArray())
-        bos.write("Content-Type: image/jpeg$lineEnd".toByteArray())
-        bos.write("Content-Length: ${data.size}$lineEnd".toByteArray())
-        bos.write(lineEnd.toByteArray())
-        bos.write(data)
-        bos.write(lineEnd.toByteArray())
-        bos.write("--$boundary--$lineEnd".toByteArray())
-        return bos.toByteArray()
     }
 
     suspend fun fetchDataList(): List<ServerFile> {

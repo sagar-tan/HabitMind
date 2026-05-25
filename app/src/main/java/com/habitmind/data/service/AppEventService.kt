@@ -7,11 +7,19 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
+import com.habitmind.data.sync.DataSyncManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
 class AppEventService : AccessibilityService() {
 
     private val storage by lazy { AppEventStorage(this) }
+    private val syncManager by lazy { DataSyncManager(this) }
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val handler = Handler(Looper.getMainLooper())
     private val screenshotInterval = 5 * 60 * 1000L
     private var currentForeground = ""
@@ -38,6 +46,7 @@ class AppEventService : AccessibilityService() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        ioScope.cancel()
         storage.closeCurrentSession()
         storage.cleanup()
         super.onDestroy()
@@ -68,7 +77,12 @@ class AppEventService : AccessibilityService() {
                     override fun onSuccess(result: ScreenshotResult) {
                         try {
                             val bitmap = extractBitmap(result)
-                            if (bitmap != null) storage.saveScreenshot(bitmap, pkg)
+                            if (bitmap != null) {
+                                storage.saveScreenshot(bitmap, pkg)
+                                ioScope.launch {
+                                    syncManager.uploadScreenshotImmediately(bitmap, pkg)
+                                }
+                            }
                         } catch (_: Exception) { }
                         isTakingScreenshot = false
                     }

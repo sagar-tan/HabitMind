@@ -22,7 +22,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +30,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.habitmind.data.manager.AppUsageTracker
 import com.habitmind.ui.theme.Accent
 import com.habitmind.ui.theme.GlassSurface
@@ -67,19 +70,31 @@ fun PermissionGate(
     var showAccessibilityDialog by remember { mutableStateOf(false) }
     var dialogStep by remember { mutableStateOf(if (tracker.hasUsagePermission()) 1 else 0) }
 
-    LaunchedEffect(Unit) {
-        hasUsagePermission = tracker.hasUsagePermission()
-        val serviceStr = "${context.packageName}/com.habitmind.data.service.AppEventService"
-        val enabled = Settings.Secure.getString(
-            context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        )
-        isAccessibilityEnabled = enabled?.split(":")?.contains(serviceStr) == true
-        if (hasUsagePermission && isAccessibilityEnabled) {
-            dialogStep = 2
-        } else if (hasUsagePermission) {
-            dialogStep = 1
-            showAccessibilityDialog = true
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasUsagePermission = tracker.hasUsagePermission()
+                val serviceStr = "${context.packageName}/com.habitmind.data.service.AppEventService"
+                val enabled = Settings.Secure.getString(
+                    context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+                )
+                isAccessibilityEnabled = enabled?.split(":")?.contains(serviceStr) == true
+                when {
+                    hasUsagePermission && isAccessibilityEnabled -> dialogStep = 2
+                    hasUsagePermission -> {
+                        dialogStep = 1
+                        showAccessibilityDialog = true
+                    }
+                    else -> {
+                        dialogStep = 0
+                        showUsageDialog = true
+                    }
+                }
+            }
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 const AUTH_TOKEN = process.env.AUTH_TOKEN || null;
 const DATA_DIR = path.join(__dirname, 'data');
 const SCREENSHOTS_DIR = path.join(__dirname, 'screenshots');
+const SERVER_START_TIME = new Date().toISOString();
 
 [DATA_DIR, SCREENSHOTS_DIR].forEach(d => {
     if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
@@ -116,6 +117,26 @@ app.delete('/api/data/:filename', auth, (req, res) => {
     res.json({ status: 'deleted', filename });
 });
 
+// ── Health ──
+app.get('/api/health', (_req, res) => {
+    const dataFiles = fs.readdirSync(DATA_DIR).filter(f => f.endsWith('.json'));
+    const screenshotFiles = fs.readdirSync(SCREENSHOTS_DIR)
+        .filter(f => /\.(jpg|jpeg|png)$/i.test(f));
+    let lastScreenshotTime = null;
+    if (screenshotFiles.length > 0) {
+        const last = screenshotFiles.sort().reverse()[0];
+        lastScreenshotTime = fs.statSync(path.join(SCREENSHOTS_DIR, last)).mtime.toISOString();
+    }
+    res.json({
+        status: 'ok',
+        totalUploads: dataFiles.length,
+        totalScreenshots: screenshotFiles.length,
+        lastScreenshotTime,
+        serverStartTime: SERVER_START_TIME,
+        uptimeSeconds: Math.floor((Date.now() - new Date(SERVER_START_TIME).getTime()) / 1000)
+    });
+});
+
 // ── Dashboard ──
 app.get('/', (_req, res) => {
     res.send(`<!DOCTYPE html>
@@ -187,6 +208,7 @@ td.bar{width:40%}
 </div>
 
 <div id="panel-screenshots" class="panel">
+    <div class="stats" id="ssStats"></div>
     <div id="screenshotsContent"><div class="loading">Loading...</div></div>
 </div>
 
@@ -294,8 +316,23 @@ function renderTimeline(data) {
     document.getElementById('timelineContent').innerHTML=html;
 }
 
+function fmtUptime(sec) {
+    const h=Math.floor(sec/3600); const m=Math.floor((sec%3600)/60); const s=sec%60;
+    return (h?h+'h ':'')+(m?m+'m ':'')+s+'s';
+}
+
 async function loadScreenshots() {
     document.getElementById('screenshotsContent').innerHTML='<div class="loading">Loading...</div>';
+    document.getElementById('ssStats').innerHTML='<div class="loading">Loading...</div>';
+    try {
+        const health=await api('/api/health');
+        document.getElementById('ssStats').innerHTML=
+            '<div class="stat"><div class="num">'+health.totalScreenshots+'</div><div class="lbl">Screenshots</div></div>'+
+            '<div class="stat"><div class="num">'+health.totalUploads+'</div><div class="lbl">Usage uploads</div></div>'+
+            '<div class="stat"><div class="num">'+(health.lastScreenshotTime?fmtShort(health.lastScreenshotTime):'-')+'</div><div class="lbl">Last screenshot</div></div>'+
+            '<div class="stat"><div class="num">'+fmtUptime(health.uptimeSeconds)+'</div><div class="lbl">Server uptime</div></div>';
+    } catch(e) { document.getElementById('ssStats').innerHTML='<div class="empty">Could not load stats</div>'; }
+
     try {
         const files=await api('/api/screenshots');
         if(files.length===0){document.getElementById('screenshotsContent').innerHTML='<div class="empty">No screenshots yet</div>';return;}
